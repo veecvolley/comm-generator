@@ -52,18 +52,23 @@ def get_gymnase_address(codmatch, codent):
                     return {'nom': nom, 'rue': rue, 'code_postal': code_postal, 'ville': ville}
     return None
 
-def parse_csv_rows(saison):
-    url = settings.ffvb_csv_url
+def parse_csv_rows(saison,division):
+
+    url = settings.ffvb_csv_url if not division else settings.ffvb_csv_url_division
     saison = saison.replace("-", "/")
 
     payload = {
         "cnclub": settings.club_id,
         "cal_saison": saison,
+        "cal_codent" : "LIIDF",
+        "cal_coddiv" : division,
         "typ_edition": "E",
         "type": "RES"
     }
 
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+    print(f"{payload}  -  {url} ==> {headers}")
     response = requests.post(url, data=payload, headers=headers)
 
     if getattr(response, "from_cache", False):

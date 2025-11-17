@@ -1,5 +1,6 @@
 ffvb:
   csv_url: "https://www.ffvbbeach.org/ffvbapp/resu/vbspo_calendrier_export_club.php"
+  csv_url_division: "https://www.ffvbbeach.org/ffvbapp/resu/vbspo_calendrier_export.php"
   address_pdf_url: "https://www.ffvbbeach.org/ffvbapp/adressier/fiche_match_ffvb.php"
 
 club:

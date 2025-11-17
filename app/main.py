@@ -17,5 +17,5 @@ app.include_router(router)
 async def on_startup():
     club_id = settings.config["club"]["id"]
     club_saisons = settings.config["club"]["saisons"]
-    # hors thread pour éviter de bloquer la boucle
-    await asyncio.to_thread(generate_config_seasons, club_id, club_saisons, "saisons.yaml")
+    # # hors thread pour éviter de bloquer la boucle
+    # await asyncio.to_thread(generate_config_seasons, club_id, club_saisons, "saisons.yaml")

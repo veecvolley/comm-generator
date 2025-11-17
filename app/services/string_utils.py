@@ -22,7 +22,9 @@ def get_team_pseudo(label, genre, type, niveau, team):
     res = re.search(r'\b(\d+)\s*$', team)
     num = int(res.group(1)) if res else 1
 
-    detected = bool(re.search(r"fs val d'europe esbly coupvray vb", team, re.IGNORECASE))
+    detected = bool(re.search(r"fs val d'europe esbly coupvray", team, re.IGNORECASE))
+
+    print(f"{team} ==================> {detected}")
 
     if detected:
 
@@ -51,19 +53,39 @@ def get_team_pseudo(label, genre, type, niveau, team):
             pseudo = f"SM{ num }"
             font_size = "bold_25"
 
-        elif label == "M15G" and genre == "Masculin" and type == "Volley-Ball":
+        elif label == "M15G" and genre == "Masculin" and type == "Volley-Ball" and niveau == "Championnat Régional":
 
-            pseudo = label
+            pseudo = "M15G-1"
             font_size = "bold_25"
 
-        elif label == "M15F" and genre == "Féminin" and type == "Volley-Ball":
+        elif label == "M15G" and genre == "Masculin" and type == "Volley-Ball" and niveau == "Championnat Départemental":
 
-            pseudo = label
+            pseudo = "M15G"
             font_size = "bold_25"
 
-        elif label == "M18G" and genre == "Masculin" and type == "Volley-Ball":
+        # elif label == "M15F" and genre == "Féminin" and type == "Volley-Ball" and niveau == "Championnat Régional":
 
-            pseudo = label
+        #     pseudo = "M15F-1"
+        #     font_size = "bold_25"
+
+        elif label == "M15F" and genre == "Féminin" and type == "Volley-Ball" and niveau == "Championnat Départemental":
+
+            pseudo = "M15F-2"
+            font_size = "bold_25"
+
+        elif label == "M18G" and genre == "Masculin" and type == "Volley-Ball" and niveau == "Championnat Régional":
+
+            pseudo = "M18G-1"
+            font_size = "bold_25"
+
+        elif label == "M18G" and genre == "Masculin" and type == "Volley-Ball" and niveau == "Qualifications Régionales":
+
+            pseudo = "M18G-1"
+            font_size = "bold_25"
+
+        elif label == "M18G" and genre == "Masculin" and type == "Volley-Ball" and niveau == "Championnat Départemental":
+
+            pseudo = "M18G-2"
             font_size = "bold_25"
 
         elif label == "M18F" and genre == "Féminin" and type == "Volley-Ball":
@@ -71,9 +93,14 @@ def get_team_pseudo(label, genre, type, niveau, team):
             pseudo = label
             font_size = "bold_25"
 
-        elif label == "M13G" and genre == "Masculin" and type == "Volley-Ball":
+        elif label == "M13G" and genre == "Masculin" and type == "Volley-Ball" and niveau == "Championnat Départemental":
 
-            pseudo = label
+            pseudo = "M13G-2"
+            font_size = "bold_25"
+
+        elif label == "M13G" and genre == "Masculin" and type == "Volley-Ball" and niveau == "Championnat Régional":
+
+            pseudo = "M13G-1"
             font_size = "bold_25"
 
         elif label == "M13F" and genre == "Féminin" and type == "Volley-Ball":

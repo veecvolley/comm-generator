@@ -44,6 +44,10 @@ class Settings:
         return self.config.get("ffvb", {}).get("csv_url")
 
     @property
+    def ffvb_csv_url_division(self):
+        return self.config.get("ffvb", {}).get("csv_url_division")
+
+    @property
     def ffvb_address_url(self):
         return self.config.get("ffvb", {}).get("address_pdf_url")
 

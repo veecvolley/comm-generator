@@ -22,9 +22,9 @@ def did_team_a_win(sets):
     if len(parts) == 2 and all(part.strip().isdigit() for part in parts):
         a, b = int(parts[0]), int(parts[1])
         if a == b:
-            return None
+            return None  # Égalité
         return a > b
-    return None
+    return a < b
 
 def create_score_image(score):
     FONT_SIZE = 40

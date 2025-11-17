@@ -26,7 +26,15 @@
 #      -d 'codmatch=2FCA007&codent=LIIDF' \
 #      > gymnase.pdf
 
-curl -v 'https://www.ffvbbeach.org/ffvbapp/resu/planning_club_class.php?cnclub=0775819&saison=2024%2F2025' \
-     | pup 'table tr json{}' \
-     | jq -r '.. | objects | select(.class? == "titrepoule") | .text| gsub("&#39;"; "\u0027")'
+# curl -v 'https://www.ffvbbeach.org/ffvbapp/resu/planning_club_class.php?cnclub=0775819&saison=2024%2F2025' \
+#      | pup 'table tr json{}' \
+#      | jq -r '.. | objects | select(.class? == "titrepoule") | .text| gsub("&#39;"; "\u0027")'
 
+curl -X POST "https://www.ffvbbeach.org/ffvbapp/resu/vbspo_calendrier_export.php" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "cal_saison=2025/2026" \
+  -d "cal_codent=LIIDF" \
+  -d "cal_coddiv=QCM" \
+  -d "typ_edition=E" \
+  -d "type=RES" \
+  -d "rech_equipe="

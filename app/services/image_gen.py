@@ -68,7 +68,11 @@ def generate_filtered_image(categories_filter=None, date_start=None, date_end=No
 
     print(f"{date_start_dt}  -  {date_end_dt} ==> {date_title}")
 
-    reader = parse_csv_rows(saison)
+    reader = list(parse_csv_rows(saison,""))
+    # reader1 = list(parse_csv_rows(saison,""))
+    # reader2 = list(parse_csv_rows(saison,"QCM"))
+    # reader = reader1 + reader2
+
 
     for row in reader:
         entity, match, date = row[0], row[2], row[3]
@@ -103,15 +107,18 @@ def generate_filtered_image(categories_filter=None, date_start=None, date_end=No
             club_a = settings.club.lower() in team_a.lower()
             club_b = settings.club.lower() in team_b.lower()
 
-            if (result and club_a) or (not result and club_b):
-                result = True
-            elif (not result and club_a) or (result and club_b):
-                result = False
+            if result is not None:  # Seulement si ce n'est pas une égalité
+                if (result and club_a) or (not result and club_b):
+                    result = True
+                elif (not result and club_a) or (result and club_b):
+                    result = False
+            # Si result est None (égalité), on le laisse None
 
             if score:
                 victory_color = "green" if result else "red" if result is False else "yellow"
-                victory_text = "VICTOIRE" if result else "DÉFAITE" if result is False else "INCONNU"
+                victory_text = "VICTOIRE" if result else "DÉFAITE" if result is False else "ÉGALITÉ"
             else:
+                victory_text = "INCONNU"
                 victory_color = "yellow"
 
             overlay = Image.open(BANNERS_DIR / f"result_{victory_color}.png").convert("RGBA")
@@ -149,7 +156,7 @@ def generate_filtered_image(categories_filter=None, date_start=None, date_end=No
 
 
         if mode == "results" and score:
-            color = (0,109,57,255) if result else (167,46,59,255)
+            color = (0,109,57,255) if result else (167,46,59,255) if result is False else (245,159,10,255) 
             draw_centered_text_overlay(background, victory_text, 200*m, 705*m, v_victory, fonts["victory"], fill=color)
 
             sets_formatted = format_sets(sets)
