@@ -176,3 +176,4 @@ cython_debug/
 *.tgz
 *.csv
 *.tar.gz
+build-transfert.sh
