@@ -82,7 +82,7 @@ def generate_filtered_image(categories_filter=None, date_start=None, date_end=No
         place = row[12]
         cat_code = match[:3]
 
-        if team_a == 'xxxxx':
+        if team_a == 'xxxxx' or team_b == 'xxxxx':
             continue
 
         if date == 'Date':
@@ -129,7 +129,7 @@ def generate_filtered_image(categories_filter=None, date_start=None, date_end=No
 
         # Debug console
         print(f"{format} | {cat_code} | {date_full} - {entity} - {match} - {category} - ({logo_a}) {team_a} - ({logo_b}) {team_b} - {sets} - {score} - {place}")
-        print(f"==> {cat_info['label']} - {cat_info['genre']} - {cat_info['type']} - {cat_info['niveau']}")
+        print(f"==> {cat_info['label']} - {cat_info['genre']} - {cat_info['type']} - {cat_info['niveau']} - {cat_info['titre']}")
 
 
         draw_centered_text_overlay(background, title_entity, 115*m, 95*m, v_entity, fonts["bold_15"], stroke_width=1, stroke_fill=(0,0,0,255))
@@ -141,7 +141,7 @@ def generate_filtered_image(categories_filter=None, date_start=None, date_end=No
         except FileNotFoundError:
             background = paste_image_fit_box(background, CLUBS_DIR / "no_logo.png", 170*m, v_logo, 65*m, 65*m)
 
-        team_a, team_font_size = get_team_pseudo(cat_info['label'], cat_info['genre'], cat_info['type'], cat_info['niveau'], team_a)
+        team_a, team_font_size = get_team_pseudo(cat_info['label'], cat_info['genre'], cat_info['type'], cat_info['niveau'], team_a, cat_info['titre'])
         draw_centered_text_overlay(background, team_a.replace("-", " "), 120*m, 310*m, v_team, fonts[team_font_size], fill=(0,0,0,255))
 
         try:
@@ -149,7 +149,7 @@ def generate_filtered_image(categories_filter=None, date_start=None, date_end=No
         except FileNotFoundError:
             background = paste_image_fit_box(background, CLUBS_DIR / "no_logo.png", 425*m, v_logo, 65*m, 65*m)
 
-        team_b, team_font_size = get_team_pseudo(cat_info['label'], cat_info['genre'], cat_info['type'], cat_info['niveau'], team_b)
+        team_b, team_font_size = get_team_pseudo(cat_info['label'], cat_info['genre'], cat_info['type'], cat_info['niveau'], team_b, cat_info['titre'])
         draw_centered_text_overlay(background, team_b.replace("-", " "), 120*m, 560*m, v_team, fonts[team_font_size], fill=(0,0,0,255))
 
         print(f"==> {team_a} - {team_b}")

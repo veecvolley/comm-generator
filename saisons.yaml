@@ -246,8 +246,8 @@ saisons:
       category: M13
       niveau: Championnat Départemental
       label: M13F
-    EHM:
-      titre: "[J] M13 MASCULIN 4X4"
+    EFM:
+      titre: "[J] M13 MASCULIN 4X4 - LIGUE BRONZE - POULE 1"
       type: Volley-Ball
       genre: Masculin
       category: M13
@@ -287,6 +287,13 @@ saisons:
       genre: Masculin
       category: M18
       niveau: Qualifications Régionales
+      label: M18G
+    MAR:
+      titre: "[J] M18 MASCULIN 6X6 - ARGENT"
+      type: Volley-Ball
+      genre: Masculin
+      category: M18
+      niveau: Championnat Régional
       label: M18G
     JFB:
       titre: "[J] M18 FEMININ 6x6 - Ph1 - Poule B"

@@ -7,7 +7,7 @@ def _norm(s: str) -> str:
     return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().strip().upper()
 
 
-def get_team_pseudo(label, genre, type, niveau, team):
+def get_team_pseudo(label, genre, type, niveau, team, titre):
     """
     Fonction qui retourne une valeur dépendant de la combinaison de cinq variables d'entrée.
 
@@ -88,9 +88,14 @@ def get_team_pseudo(label, genre, type, niveau, team):
             pseudo = "M18G-2"
             font_size = "bold_25"
 
-        elif label == "M18F" and genre == "Féminin" and type == "Volley-Ball":
+        elif label == "M18F" and genre == "Féminin" and type == "Volley-Ball" and titre == "[J] M18 FEMININ 6x6 - Ph1 - Poule B":
 
-            pseudo = label
+            pseudo = "M18F-1"
+            font_size = "bold_25"
+
+        elif label == "M18F" and genre == "Féminin" and type == "Volley-Ball" and titre == "[J] M18 FEMININ 6x6 - Ph1 - Poule C":
+
+            pseudo = "M18F-2"
             font_size = "bold_25"
 
         elif label == "M13G" and genre == "Masculin" and type == "Volley-Ball" and niveau == "Championnat Départemental":
