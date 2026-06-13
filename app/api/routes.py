@@ -1,66 +1,150 @@
-from fastapi import APIRouter, Request, Query
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import APIRouter, Request, Query, HTTPException, Depends
+from fastapi.responses import StreamingResponse, JSONResponse, Response, HTMLResponse
+from sqlalchemy.orm import Session
 from typing import Optional, List
+import asyncio
 from app.services.image_gen import generate_filtered_image
 from app.services.seasons import generate_config_seasons
-# from app.core.constants import CATEGORIES
+from app.core.logger import get_logger
+from app.core.cache import image_cache
+from app.db.database import get_db
+from app.db.crud import seasons as crud_seasons
 import io
 import pathlib
 from app.core.templates import templates
 from app.core.config import settings
 
+logger = get_logger(__name__)
+
 VERSION = open(pathlib.Path(__file__).parents[2] / "VERSION.md", encoding="utf-8").readline().strip()
 
 router = APIRouter()
 
-@router.get("/", response_class=StreamingResponse)
-def index(request: Request):
-    
-    return templates.TemplateResponse("index.html", {"request": request, "version": VERSION})
+
+@router.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "version": VERSION,
+        "service": "comm-generator"
+    }
+
+
+@router.get("/", response_class=HTMLResponse)
+def index(request: Request, db: Session = Depends(get_db)):
+    from app.db.crud.config import get_active_saisons, get_setting
+    saisons = sorted(get_active_saisons(db), reverse=True)
+    club_name = get_setting(db, "club_name")
+    return templates.TemplateResponse("index.html", {
+        "request": request, "version": VERSION,
+        "saisons": saisons, "club_name": club_name,
+    })
+
 
 @router.get("/categories")
-def categories(saison: str = Query(..., description="Saison au format YYYY-YYYY (ou YYYY/YYYY)")):
-    # Normalisation pour supporter les deux séparateurs
-    s = saison.strip()
-    seasons = getattr(settings, "saisons", {}) or {}
-    cats = (
-        seasons.get(s) or
-        seasons.get(s.replace("/", "-")) or
-        seasons.get(s.replace("-", "/"))
-    )
-
+def categories(
+    saison: str = Query(..., description="Saison au format YYYY-YYYY (ou YYYY/YYYY)"),
+    db: Session = Depends(get_db)
+):
+    s = saison.strip().replace("/", "-")
+    cats = crud_seasons.get_categories_for_season(db, s)
     if not cats:
-        return JSONResponse(
-            status_code=404,
-            content={"error": f"Saison '{saison}' non trouvée"}
-        )
+        # Fallback: try with "/" separator
+        cats = crud_seasons.get_categories_for_season(db, s.replace("-", "/"))
+    if not cats:
+        return JSONResponse(status_code=404, content={"error": f"Saison '{saison}' non trouvée"})
     return cats
 
+
 @router.get("/image")
-def image(
+async def image(
     saison: Optional[str] = "2025/2026",
     mode: Optional[str] = "planning",
     title: Optional[str] = "Matchs",
     format: Optional[str] = "pub",
+    template: Optional[str] = None,
     categories: Optional[List[str]] = Query(None),
     date_start: Optional[str] = None,
-    date_end: Optional[str] = None
+    date_end: Optional[str] = None,
+    use_cache: bool = Query(True, description="Utiliser le cache des images"),
 ):
-    print(f"{mode}")
-    print(f"{saison}")
-    print(f"{categories}")
-    img = generate_filtered_image(categories, date_start, date_end, title, format, mode, saison)
+    logger.info("Image generation request - Mode: %s, Saison: %s, Template: %s, Categories: %s",
+                mode, saison, template, categories)
+
+    cache_params = {
+        "saison": saison,
+        "mode": mode,
+        "title": title,
+        "format": format,
+        "template": template,
+        "categories": categories or [],
+        "date_start": date_start,
+        "date_end": date_end,
+    }
+
+    if use_cache:
+        cached_image = image_cache.get(**cache_params)
+        if cached_image:
+            logger.info("Serving image from cache")
+            return Response(content=cached_image, media_type="image/png")
+
+    logger.info("Generating new image asynchronously")
+    try:
+        from app.db.database import get_db_session
+        def _gen():
+            db = get_db_session()
+            try:
+                return generate_filtered_image(
+                    categories, date_start, date_end, title, format, mode, saison, template, db=db
+                )
+            finally:
+                db.close()
+
+        img = await asyncio.to_thread(_gen)
+    except ValueError as e:
+        logger.error("Template error: %s", e)
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if use_cache:
+        await asyncio.to_thread(image_cache.set, img, **cache_params)
+
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
+    logger.info("Image generated successfully")
     return StreamingResponse(buf, media_type="image/png")
 
+
+@router.get("/templates")
+def list_templates():
+    from app.core.image_templates import template_manager
+    return {
+        "default": template_manager.default_template,
+        "templates": template_manager.list_templates()
+    }
+
+
 @router.post("/update-config")
-def update_config():
-    club_id = settings.config["club"]["id"]
-    club_saisons = settings.config["club"]["saisons"]
+def update_config(db: Session = Depends(get_db)):
+    """Met à jour la configuration des saisons depuis la FFVB."""
+    from app.db.crud.config import get_setting, get_active_saisons
+    club_id = get_setting(db, "club_id") or settings.club_id
+    saisons = get_active_saisons(db) or settings.club_saisons
     try:
-        generate_config_seasons(club_id, club_saisons, "saisons.yaml")
+        generate_config_seasons(club_id, saisons, "saisons.yaml")
         return {"message": "Configuration mise à jour avec succès."}
     except Exception as e:
         return {"message": f"Erreur : {e}"}
+
+
+@router.post("/cache/clear")
+def clear_cache(expired_only: bool = Query(False, description="Supprimer uniquement les fichiers expirés")):
+    logger.info("Cache clear requested (expired_only=%s)", expired_only)
+    if expired_only:
+        deleted_count = image_cache.clear_expired()
+    else:
+        deleted_count = image_cache.clear_all()
+    return {
+        "message": "Cache nettoyé avec succès",
+        "deleted_files": deleted_count
+    }

@@ -4,14 +4,19 @@ ffvb:
   address_pdf_url: "https://www.ffvbbeach.org/ffvbapp/adressier/fiche_match_ffvb.php"
 
 club:
-  name: "FS VAL D'EUROPE ESBLY COUPVRAY VB"
+  name: "FS VAL D'EUROPE ESBLY COUPVRAY"
   id: "0775819"
   gymnases:
     - GYMNASE DAVID DOUILLET
     - DAVID DOUILLET
-    - PARC DES SPORTS
+    #- PARC DES SPORTS
     - ESPACE JEAN JACQUES LITZLER
+    - ESPACE LITZLER
     - ÉMILIE ANDEOL
   saisons:
     - 2024/2025
     - 2025/2026
+
+# Configuration des templates
+templates:
+  default: "template1"  # Template par défaut si non spécifié via API

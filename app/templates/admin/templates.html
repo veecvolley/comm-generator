@@ -1,0 +1,131 @@
+{% extends "admin/base.html" %}
+{% block title %}Templates{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-image me-2 text-primary"></i>Templates d'images</h4>
+</div>
+
+{% if success %}<div class="alert alert-success alert-dismissible"><button class="btn-close" data-bs-dismiss="alert"></button>Modifications enregistrées.</div>{% endif %}
+
+{# Hidden forms — one per template for display_name and for id rename #}
+{% for tpl in templates %}
+<form id="rename-{{ tpl.name }}" method="post"
+      action="/admin/templates/{{ tpl.name }}/rename" style="display:none"></form>
+<form id="renameid-{{ tpl.name }}" method="post"
+      action="/admin/templates/{{ tpl.name }}/rename-id" style="display:none"></form>
+{% endfor %}
+
+<div class="row g-3">
+  {% for tpl in templates %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card border-0 shadow-sm h-100 {% if tpl.name == default_name %}border border-primary{% endif %}">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+          {# View mode #}
+          <strong id="title-view-{{ tpl.name }}" class="text-truncate">{{ tpl.display_name or tpl.name }}</strong>
+          <button type="button"
+                  id="title-edit-btn-{{ tpl.name }}"
+                  class="btn btn-sm btn-outline-secondary py-0 px-1 flex-shrink-0"
+                  onclick="tplStartEdit('{{ tpl.name }}')" title="Renommer">
+            <i class="bi bi-pencil"></i>
+          </button>
+          {# Edit mode (hidden) #}
+          <input type="text" name="display_name" form="rename-{{ tpl.name }}"
+                 id="title-input-{{ tpl.name }}"
+                 value="{{ tpl.display_name or tpl.name }}"
+                 class="form-control form-control-sm d-none flex-grow-1">
+          <span id="title-edit-actions-{{ tpl.name }}" class="d-none d-inline-flex gap-1 flex-shrink-0">
+            <button type="submit" form="rename-{{ tpl.name }}"
+                    class="btn btn-sm btn-success py-0 px-1" title="Enregistrer">
+              <i class="bi bi-check-lg"></i>
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary py-0 px-1"
+                    onclick="tplCancelEdit('{{ tpl.name }}')" title="Annuler">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          {% if tpl.name == default_name %}<span class="badge bg-primary">Défaut</span>{% endif %}
+          {# ID inline edit #}
+          <code id="id-view-{{ tpl.name }}" class="text-muted small">{{ tpl.name }}</code>
+          <button type="button"
+                  id="id-edit-btn-{{ tpl.name }}"
+                  class="btn btn-sm btn-outline-secondary py-0 px-1"
+                  onclick="tplStartIdEdit('{{ tpl.name }}')" title="Renommer l'ID">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <input type="text" name="new_name" form="renameid-{{ tpl.name }}"
+                 id="id-input-{{ tpl.name }}"
+                 value="{{ tpl.name }}"
+                 class="form-control form-control-sm font-monospace d-none" style="width:120px">
+          <span id="id-edit-actions-{{ tpl.name }}" class="d-none d-inline-flex gap-1">
+            <button type="submit" form="renameid-{{ tpl.name }}"
+                    class="btn btn-sm btn-success py-0 px-1" title="Enregistrer">
+              <i class="bi bi-check-lg"></i>
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary py-0 px-1"
+                    onclick="tplCancelIdEdit('{{ tpl.name }}')" title="Annuler">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </span>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if tpl.description %}<p class="text-muted small mb-2">{{ tpl.description }}</p>{% endif %}
+        {% if tpl.inherit_from %}<p class="small mb-2">Hérite de : <code>{{ tpl.inherit_from }}</code></p>{% endif %}
+        <div class="small text-muted">
+          Backgrounds : {% for k, v in tpl.get_backgrounds().items() %}<code>{{ k }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+        </div>
+      </div>
+      <div class="card-footer bg-white border-top-0 d-flex gap-2">
+        <a href="/admin/templates/{{ tpl.name }}" class="btn btn-sm btn-outline-primary flex-grow-1">
+          <i class="bi bi-pencil me-1"></i>Éditer
+        </a>
+        {% if tpl.name != default_name %}
+        <form method="post" action="/admin/templates/{{ tpl.name }}/set-default">
+          <button class="btn btn-sm btn-outline-secondary" title="Définir comme défaut"><i class="bi bi-star"></i></button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="alert alert-info">Aucun template trouvé.</div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+function tplStartEdit(name) {
+  document.getElementById('title-view-' + name).classList.add('d-none');
+  document.getElementById('title-edit-btn-' + name).classList.add('d-none');
+  document.getElementById('title-input-' + name).classList.remove('d-none');
+  document.getElementById('title-edit-actions-' + name).classList.remove('d-none');
+  document.getElementById('title-input-' + name).focus();
+}
+function tplCancelEdit(name) {
+  document.getElementById('title-view-' + name).classList.remove('d-none');
+  document.getElementById('title-edit-btn-' + name).classList.remove('d-none');
+  document.getElementById('title-input-' + name).classList.add('d-none');
+  document.getElementById('title-edit-actions-' + name).classList.add('d-none');
+}
+function tplStartIdEdit(name) {
+  document.getElementById('id-view-' + name).classList.add('d-none');
+  document.getElementById('id-edit-btn-' + name).classList.add('d-none');
+  document.getElementById('id-input-' + name).classList.remove('d-none');
+  document.getElementById('id-edit-actions-' + name).classList.remove('d-none');
+  document.getElementById('id-input-' + name).focus();
+}
+function tplCancelIdEdit(name) {
+  document.getElementById('id-view-' + name).classList.remove('d-none');
+  document.getElementById('id-edit-btn-' + name).classList.remove('d-none');
+  document.getElementById('id-input-' + name).classList.add('d-none');
+  document.getElementById('id-edit-actions-' + name).classList.add('d-none');
+}
+</script>
+{% endblock %}

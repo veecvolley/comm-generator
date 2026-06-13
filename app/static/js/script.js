@@ -1,5 +1,5 @@
 // --- Version depuis le footer (incrustée côté serveur) ---
-const APP_VERSION = document.getElementById("versionInfo").textContent.split(": ")[1];
+const APP_VERSION = document.getElementById("versionInfo")?.textContent.split(": ")[1] || "";
 
 // Utilitaire: normalise "2025/2026" -> "2025-2026"
 function normalizeSeason(s) {
@@ -34,7 +34,6 @@ function syncEndToNextDay(opts = { force: false }) {
   if (start.valueAsDate) {
     next = new Date(start.valueAsDate.getTime());
     next.setDate(next.getDate() + 1);
-    // Si on force, ou si end est avant start, on met le lendemain
     if (opts.force || !end.value || end.value < start.value) {
       end.valueAsDate = next;
     }
@@ -50,13 +49,52 @@ function syncEndToNextDay(opts = { force: false }) {
   }
 }
 
+// --- Chargement des templates ---
+async function loadTemplates() {
+  const sel = document.getElementById("template");
+
+  sel.innerHTML = "";
+  const loadingOpt = document.createElement("option");
+  loadingOpt.text = "Chargement des templates…";
+  loadingOpt.disabled = true;
+  loadingOpt.selected = true;
+  sel.add(loadingOpt);
+
+  try {
+    const resp = await fetch("/templates");
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const data = await resp.json();
+
+    sel.innerHTML = "";
+
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.text = `Par défaut (${data.default})`;
+    sel.add(defaultOpt);
+
+    // data.templates = { name: display_name, ... }
+    Object.entries(data.templates).forEach(([name, description]) => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.text = description;
+      sel.add(opt);
+    });
+  } catch (e) {
+    console.error("Erreur templates:", e);
+    sel.innerHTML = "";
+    const errOpt = document.createElement("option");
+    errOpt.text = "Erreur de chargement des templates";
+    errOpt.disabled = true;
+    sel.add(errOpt);
+  }
+}
+
 // --- Chargement des catégories ---
 async function loadCategoriesForSeason() {
   const saisonRaw = document.getElementById("saison")?.value || "";
   const saison = normalizeSeason(saisonRaw);
   const sel = document.getElementById("categories");
 
-  // État "chargement"
   sel.innerHTML = "";
   const loadingOpt = document.createElement("option");
   loadingOpt.text = "Chargement des catégories…";
@@ -70,14 +108,30 @@ async function loadCategoriesForSeason() {
     const data = await resp.json();
 
     sel.innerHTML = "";
+
+    // Group by info.type using <optgroup>
+    const groups = {};
     Object.entries(data).forEach(([code, info]) => {
-      const opt = document.createElement("option");
-      opt.value = code;
-      opt.text = `${info.titre || ""}`;
-      sel.add(opt);
+      const groupKey = info.type || "Autres";
+      if (!groups[groupKey]) groups[groupKey] = [];
+      groups[groupKey].push({ code, info });
     });
 
-    // Optionnel: sélectionne tout par défaut si rien n'est coché
+    Object.entries(groups).forEach(([groupKey, items]) => {
+      const grp = document.createElement("optgroup");
+      grp.label = groupKey;
+      items.forEach(({ code, info }) => {
+        const opt = document.createElement("option");
+        opt.value = code;
+        const label = info.label || code;
+        const genre = info.genre ? ` ${info.genre}` : "";
+        opt.text = `[${label}]${genre}`;
+        grp.appendChild(opt);
+      });
+      sel.add(grp);
+    });
+
+    // Sélectionne tout par défaut si rien n'est coché
     if (sel.options.length && !Array.from(sel.options).some(o => o.selected)) {
       Array.from(sel.options).forEach(o => (o.selected = true));
     }
@@ -91,54 +145,143 @@ async function loadCategoriesForSeason() {
   }
 }
 
+// --- Status message ---
+const statusMsg = document.getElementById("statusMsg");
+
+function showStatus(msg, type = "info", autohideMs = 3000) {
+  if (!statusMsg) return;
+  statusMsg.className = "small";
+  if (type === "ok")    statusMsg.classList.add("text-success");
+  else if (type === "error") statusMsg.classList.add("text-danger");
+  else                  statusMsg.classList.add("text-muted");
+  statusMsg.textContent = msg;
+  statusMsg.classList.remove("d-none");
+
+  if (type !== "error" && autohideMs > 0) {
+    clearTimeout(statusMsg._t);
+    statusMsg._t = setTimeout(() => {
+      statusMsg.classList.add("d-none");
+    }, autohideMs);
+  }
+}
+
+// --- Refresh config button ---
+const refreshConfigBtn = document.getElementById("refreshConfigBtn");
+
+function setRefreshBusy(busy) {
+  if (!refreshConfigBtn) return;
+  refreshConfigBtn.disabled = busy;
+  refreshConfigBtn.innerHTML = busy
+    ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
+    : '<i class="bi bi-arrow-clockwise"></i>';
+}
+
+refreshConfigBtn?.addEventListener("click", async () => {
+  if (refreshConfigBtn.disabled) return;
+  try {
+    setRefreshBusy(true);
+    showStatus("Mise à jour…", "info", 0);
+    const resp = await fetch("/update-config", { method: "POST" });
+    const data = await resp.json();
+    showStatus(data.message || "Configuration mise à jour.", "ok", 2500);
+    await loadCategoriesForSeason();
+  } catch (err) {
+    showStatus("Échec de la mise à jour : " + err, "error", 0);
+  } finally {
+    setRefreshBusy(false);
+  }
+});
+
+// --- Clear cache button ---
+const clearCacheBtn = document.getElementById("clearCacheBtn");
+
+function setCacheBusy(busy) {
+  if (!clearCacheBtn) return;
+  clearCacheBtn.disabled = busy;
+  clearCacheBtn.innerHTML = busy
+    ? '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'
+    : '<i class="bi bi-trash3"></i>';
+}
+
+clearCacheBtn?.addEventListener("click", async () => {
+  if (clearCacheBtn.disabled) return;
+  try {
+    setCacheBusy(true);
+    showStatus("Nettoyage du cache…", "info", 0);
+    const resp = await fetch("/cache/clear", { method: "POST" });
+    const data = await resp.json();
+    const msg = data.deleted_files !== undefined
+      ? `Cache vidé (${data.deleted_files} fichier(s) supprimé(s))`
+      : data.message || "Cache vidé.";
+    showStatus(msg, "ok", 2500);
+  } catch (err) {
+    showStatus("Échec du nettoyage : " + err, "error", 0);
+  } finally {
+    setCacheBusy(false);
+  }
+});
+
 // --- Soumission du formulaire ---
 async function submitForm(e) {
   e.preventDefault();
-  document.getElementById("loading").style.display = "inline";
-  document.getElementById("resultImg").style.display = "none";
+
+  const loadingEl    = document.getElementById("loading");
+  const generateLabel = document.getElementById("generateLabel");
+  const resultImg    = document.getElementById("resultImg");
+  const emptyState   = document.getElementById("emptyState");
+  const imageActions = document.getElementById("imageActions");
+
+  loadingEl.classList.remove("d-none");
+  generateLabel.classList.add("d-none");
+  resultImg.classList.add("d-none");
+  if (emptyState) emptyState.classList.remove("d-none");
+  if (imageActions) imageActions.classList.add("d-none");
 
   const saisonRaw = document.getElementById("saison").value;
-  const saison = normalizeSeason(saisonRaw);
-  const title = document.getElementById("title").value;
-  const format = document.querySelector('input[name="format"]:checked').value;
-  const cats = Array.from(document.getElementById("categories").selectedOptions).map(opt => opt.value);
+  const saison    = normalizeSeason(saisonRaw);
+  const title     = document.getElementById("title").value;
+  const format    = document.querySelector('input[name="format"]:checked').value;
+  const template  = document.getElementById("template").value;
+  const cats      = Array.from(document.getElementById("categories").selectedOptions).map(opt => opt.value);
   const date_start = document.getElementById("date_start").value;
-  const date_end = document.getElementById("date_end").value;
-  const mode = document.getElementById("mode").value;
+  const date_end   = document.getElementById("date_end").value;
+  const mode       = document.getElementById("mode").value;
 
   let url = "/image?mode=" + encodeURIComponent(mode);
-  if (cats.length) url += "&" + cats.map(c => "categories=" + encodeURIComponent(c)).join("&");
-  if (saison) url += "&saison=" + encodeURIComponent(saison);
-  if (title) url += "&title=" + encodeURIComponent(title);
-  if (format) url += "&format=" + encodeURIComponent(format);
-  if (date_start) url += "&date_start=" + encodeURIComponent(date_start);
-  if (date_end) url += "&date_end=" + encodeURIComponent(date_end);
+  if (cats.length)  url += "&" + cats.map(c => "categories=" + encodeURIComponent(c)).join("&");
+  if (saison)       url += "&saison=" + encodeURIComponent(saison);
+  if (title)        url += "&title=" + encodeURIComponent(title);
+  if (format)       url += "&format=" + encodeURIComponent(format);
+  if (template)     url += "&template=" + encodeURIComponent(template);
+  if (date_start)   url += "&date_start=" + encodeURIComponent(date_start);
+  if (date_end)     url += "&date_end=" + encodeURIComponent(date_end);
 
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error("HTTP " + r.status);
-    const blob = await r.blob();
+    const blob   = await r.blob();
     const imgUrl = URL.createObjectURL(blob);
-    const img = document.getElementById("resultImg");
-    img.src = imgUrl;
-    img.style.display = "block";
+    resultImg.src = imgUrl;
+    resultImg.classList.remove("d-none");
+    if (emptyState) emptyState.classList.add("d-none");
   } catch (err) {
     console.error("Erreur génération image:", err);
     alert("Erreur lors de la génération de l'image.");
   } finally {
-    document.getElementById("loading").style.display = "none";
+    loadingEl.classList.add("d-none");
+    generateLabel.classList.remove("d-none");
   }
 }
 
 // --- Modal / Lightbox ---
 function setupLightbox() {
-  const img = document.getElementById("resultImg");
-  const modal = document.getElementById("imgModal");
+  const img      = document.getElementById("resultImg");
+  const modal    = document.getElementById("imgModal");
   const modalImg = document.getElementById("imgModalContent");
   const closeBtn = document.getElementById("imgModalClose");
 
   img.onclick = function () {
-    if (this.src && this.style.display !== "none") {
+    if (this.src && !this.classList.contains("d-none")) {
       modalImg.src = this.src;
       modal.style.display = "flex";
     }
@@ -151,51 +294,16 @@ function setupLightbox() {
   };
 }
 
-// --- Boot ---
-document.addEventListener("DOMContentLoaded", async function () {
-  // Dates par défaut = week-end courant
-  const weekend = getWeekendDates();
-  document.getElementById("date_start").value = weekend.saturday;
-  document.getElementById("date_end").value = weekend.sunday;
-
-  // Mettre la contrainte min et sync initiale
-  syncEndToNextDay({ force: false });
-
-  // Quand la date de début change -> forcer le lendemain et min
-  document.getElementById("date_start").addEventListener("change", () => {
-    syncEndToNextDay({ force: true });
-  });
-
-  // S'il met une date de fin avant le début, on recale
-  document.getElementById("date_end").addEventListener("change", () => {
-    const start = document.getElementById("date_start").value;
-    const end = document.getElementById("date_end").value;
-    if (start && end && end < start) syncEndToNextDay({ force: true });
-  });
-
-  // Catégories dynamiques au démarrage et sur changement de saison
-  await loadCategoriesForSeason();
-  document.getElementById("saison")?.addEventListener("change", loadCategoriesForSeason);
-
-  // Form submit
-  document.getElementById("filterForm").addEventListener("submit", submitForm);
-
-  // Version dans le footer
-  document.getElementById("versionInfo").textContent = "Version : " + APP_VERSION;
-
-  // Lightbox
-  setupLightbox();
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const modal = document.getElementById("imgModal");
+// --- Zoom + drag on lightbox ---
+function setupLightboxZoom() {
+  const modal    = document.getElementById("imgModal");
   const modalImg = document.getElementById("imgModalContent");
   const closeBtn = document.getElementById("imgModalClose");
 
   let zoomed = false;
   let dragging = false;
   let startX = 0, startY = 0;
-  let baseX = 0, baseY = 0; // offset courant
+  let baseX = 0, baseY = 0;
 
   function resetView() {
     zoomed = false;
@@ -207,9 +315,8 @@ document.addEventListener("DOMContentLoaded", () => {
     modalImg.style.maxHeight = "90%";
   }
 
-  // Toggle zoom au clic
   modalImg.addEventListener("click", (e) => {
-    if (dragging) return; // éviter déclenchement si on a déplacé
+    if (dragging) return;
     zoomed = !zoomed;
     if (zoomed) {
       modalImg.classList.add("zoomed");
@@ -222,7 +329,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Début drag
   modalImg.addEventListener("mousedown", (e) => {
     if (!zoomed) return;
     dragging = true;
@@ -230,25 +336,15 @@ document.addEventListener("DOMContentLoaded", () => {
     startY = e.clientY - baseY;
   });
 
-  // Fin drag
-  window.addEventListener("mouseup", () => {
-    dragging = false;
-  });
+  window.addEventListener("mouseup", () => { dragging = false; });
 
-  // Déplacement
   window.addEventListener("mousemove", (e) => {
     if (!dragging || !zoomed) return;
-
-    let newX = e.clientX - startX;
-    let newY = e.clientY - startY;
-
-    // On pourrait ici ajouter des limites (clamp) si besoin
-    baseX = newX;
-    baseY = newY;
+    baseX = e.clientX - startX;
+    baseY = e.clientY - startY;
     modalImg.style.transform = `translate(${baseX}px, ${baseY}px)`;
   });
 
-  // Fermeture → reset
   closeBtn.addEventListener("click", () => {
     modal.style.display = "none";
     resetView();
@@ -259,28 +355,34 @@ document.addEventListener("DOMContentLoaded", () => {
       resetView();
     }
   });
-});
+}
 
-  const resultImg = document.getElementById("resultImg");
-  const dlIcon = document.getElementById("downloadIcon");
-  const shareIcon = document.getElementById("shareIcon");
+// --- Download & Share ---
+function setupImageActions() {
+  const resultImg    = document.getElementById("resultImg");
+  const imageActions = document.getElementById("imageActions");
+  const downloadBtn  = document.getElementById("downloadBtn");
+  const shareBtn     = document.getElementById("shareBtn");
 
-  // Masquer les icônes avant génération
-  document.getElementById("filterForm").addEventListener("submit", () => {
-    dlIcon.style.display = "none";
-    shareIcon.style.display = "none";
-  });
-
-  // Afficher les icônes après génération
+  // Show action buttons when image loads
   resultImg.addEventListener("load", () => {
-    if (resultImg.src) {
-      dlIcon.style.display = "inline-flex";
-      shareIcon.style.display = "inline-flex";
+    if (resultImg.src && !resultImg.classList.contains("d-none")) {
+      if (imageActions) {
+        imageActions.classList.remove("d-none");
+        imageActions.classList.add("d-flex");
+      }
     }
   });
 
-  // Téléchargement direct
-  dlIcon.addEventListener("click", () => {
+  // Hide action buttons before generation
+  document.getElementById("filterForm").addEventListener("submit", () => {
+    if (imageActions) {
+      imageActions.classList.add("d-none");
+      imageActions.classList.remove("d-flex");
+    }
+  });
+
+  downloadBtn?.addEventListener("click", () => {
     if (!resultImg.src) return;
     const a = document.createElement("a");
     a.href = resultImg.src;
@@ -290,34 +392,22 @@ document.addEventListener("DOMContentLoaded", () => {
     a.remove();
   });
 
-  // Partage avec fallback
-  shareIcon.addEventListener("click", async () => {
+  shareBtn?.addEventListener("click", async () => {
     if (!resultImg.src) return;
-
     try {
       const resp = await fetch(resultImg.src, { cache: "no-store" });
       const blob = await resp.blob();
       const file = new File([blob], "image-veec.png", { type: blob.type || "image/png" });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: "Comm' VEEC",
-          text: "Voici l'image générée 🚀",
-          files: [file]
-        });
+        await navigator.share({ title: "Comm' VEEC", text: "Voici l'image générée", files: [file] });
         return;
       }
-
       if (navigator.share) {
-        await navigator.share({
-          title: "Comm' VEEC",
-          text: "Voici l'image générée 🚀",
-          url: resultImg.src
-        });
+        await navigator.share({ title: "Comm' VEEC", text: "Voici l'image générée", url: resultImg.src });
         return;
       }
-
-      // Fallback: téléchargement
+      // Fallback: download
       const a = document.createElement("a");
       a.href = resultImg.src;
       a.download = "image-veec.png";
@@ -328,57 +418,33 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn("Partage indisponible, fallback download.", e);
     }
   });
-
-const refreshIcon   = document.getElementById("refreshConfigIcon");
-const statusEl      = document.getElementById("configStatus");
-
-function setRefreshBusy(busy) {
-  if (busy) {
-    refreshIcon.dataset.busy = "1";
-    refreshIcon.classList.remove("fa-rotate-right");
-    refreshIcon.classList.add("fa-spinner", "fa-spin", "is-busy");
-    refreshIcon.title = "Mise à jour en cours…";
-    refreshIcon.style.cursor = "wait";
-  } else {
-    refreshIcon.dataset.busy = "0";
-    refreshIcon.classList.remove("fa-spinner", "fa-spin", "is-busy");
-    refreshIcon.classList.add("fa-rotate-right");
-    refreshIcon.title = "Mettre à jour la configuration";
-    refreshIcon.style.cursor = "pointer";
-  }
 }
 
-function showStatus(msg, type = "info", autohideMs = 3000) {
-  statusEl.className = "";           // reset classes
-  statusEl.classList.add(type);      // info | ok | error
-  statusEl.textContent = msg;
-  statusEl.style.display = "inline";
+// --- Boot ---
+document.addEventListener("DOMContentLoaded", async function () {
+  // Dates par défaut = week-end courant
+  const weekend = getWeekendDates();
+  document.getElementById("date_start").value = weekend.saturday;
+  document.getElementById("date_end").value   = weekend.sunday;
 
-  // auto‑masquage (sauf en cas d’erreur, on laisse visible)
-  if (type !== "error" && autohideMs > 0) {
-    clearTimeout(statusEl._t);
-    statusEl._t = setTimeout(() => {
-      statusEl.style.display = "none";
-    }, autohideMs);
-  }
-}
+  syncEndToNextDay({ force: false });
 
-refreshIcon?.addEventListener("click", async () => {
-  if (refreshIcon.dataset.busy === "1") return;
+  document.getElementById("date_start").addEventListener("change", () => {
+    syncEndToNextDay({ force: true });
+  });
+  document.getElementById("date_end").addEventListener("change", () => {
+    const start = document.getElementById("date_start").value;
+    const end   = document.getElementById("date_end").value;
+    if (start && end && end < start) syncEndToNextDay({ force: true });
+  });
 
-  try {
-    setRefreshBusy(true);
-    showStatus("Mise à jour…", "info", 0);
+  await loadTemplates();
+  await loadCategoriesForSeason();
+  document.getElementById("saison")?.addEventListener("change", loadCategoriesForSeason);
 
-    const resp  = await fetch("/update-config", { method: "POST" });
-    const data  = await resp.json();
+  document.getElementById("filterForm").addEventListener("submit", submitForm);
 
-    // Succès
-    showStatus(data.message || "Configuration mise à jour.", "ok", 2500);
-  } catch (err) {
-    // Erreur (on ne masque pas automatiquement)
-    showStatus("Échec de la mise à jour : " + err, "error", 0);
-  } finally {
-    setRefreshBusy(false);
-  }
+  setupLightbox();
+  setupLightboxZoom();
+  setupImageActions();
 });

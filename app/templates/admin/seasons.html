@@ -1,0 +1,218 @@
+{% extends "admin/base.html" %}
+{% block title %}Saisons & Catégories{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <h4 class="mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>Saisons & Catégories</h4>
+  <div class="d-flex gap-2">
+    <form method="post" action="/admin/seasons/sync">
+      <button class="btn btn-success btn-sm">
+        <i class="bi bi-arrow-repeat me-1"></i>Sync depuis FFVB
+      </button>
+    </form>
+    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCatModal">
+      <i class="bi bi-plus me-1"></i>Ajouter
+    </button>
+  </div>
+</div>
+
+{% if success %}<div class="alert alert-success alert-dismissible"><button class="btn-close" data-bs-dismiss="alert"></button>Modifications enregistrées.</div>{% endif %}
+{% if error %}<div class="alert alert-danger alert-dismissible"><button class="btn-close" data-bs-dismiss="alert"></button>{{ error }}</div>{% endif %}
+
+{% for saison in saisons %}
+{# Hidden edit forms (one per category — outside the table to keep valid HTML) #}
+{% for code, info in cats_by_season[saison].items() %}
+{% set rid = saison ~ '__' ~ code %}
+<form id="ef-{{ rid }}" method="post" action="/admin/seasons/{{ saison }}/{{ code }}/edit" style="display:none"></form>
+{% endfor %}
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white d-flex align-items-center justify-content-between">
+    <span class="fw-semibold">{{ saison }}</span>
+    <span class="badge bg-secondary">{{ cats_by_season[saison]|length }} catégories</span>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Code</th><th>Label</th><th>Type</th><th>Genre</th><th>Niveau</th><th>Titre</th><th style="width:90px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for code, info in cats_by_season[saison].items() %}
+          {% set rid = saison ~ '__' ~ code %}
+          <tr id="row-{{ rid }}">
+            <td><code>{{ code }}</code></td>
+            <td>
+              <span class="v-cell"><strong>{{ info.label }}</strong></span>
+              <span class="e-cell d-none">
+                <select name="label" form="ef-{{ rid }}" class="form-select form-select-sm" style="min-width:90px">
+                  <option value="">—</option>
+                  {% for l in labels %}
+                  <option value="{{ l }}" {% if l == info.label %}selected{% endif %}>{{ l }}</option>
+                  {% endfor %}
+                </select>
+              </span>
+            </td>
+
+            {# TYPE #}
+            <td>
+              <span class="v-cell">
+                {% if info.type %}<span class="badge text-bg-secondary">{{ info.type }}</span>{% endif %}
+              </span>
+              <span class="e-cell d-none">
+                <select name="type" form="ef-{{ rid }}" class="form-select form-select-sm" style="min-width:130px">
+                  {% for t in types %}
+                  <option value="{{ t }}" {% if t == info.type %}selected{% endif %}>{{ t }}</option>
+                  {% endfor %}
+                </select>
+              </span>
+            </td>
+
+            {# GENRE #}
+            <td>
+              <span class="v-cell">
+                {% if info.genre %}<span class="badge text-bg-secondary">{{ info.genre }}</span>{% endif %}
+              </span>
+              <span class="e-cell d-none">
+                <select name="genre" form="ef-{{ rid }}" class="form-select form-select-sm" style="min-width:110px">
+                  {% for g in genres %}
+                  <option value="{{ g }}" {% if g == info.genre %}selected{% endif %}>{{ g }}</option>
+                  {% endfor %}
+                </select>
+              </span>
+            </td>
+
+            {# NIVEAU #}
+            <td>
+              <span class="v-cell"><small class="text-muted">{{ info.niveau }}</small></span>
+              <span class="e-cell d-none">
+                <select name="niveau" form="ef-{{ rid }}" class="form-select form-select-sm" style="min-width:150px">
+                  <option value="">—</option>
+                  {% for n in niveaux %}
+                  <option value="{{ n }}" {% if n == info.niveau %}selected{% endif %}>{{ n }}</option>
+                  {% endfor %}
+                </select>
+              </span>
+            </td>
+
+            {# TITRE #}
+            <td>
+              <span class="v-cell"><small class="text-truncate d-inline-block" style="max-width:200px" title="{{ info.titre }}">{{ info.titre }}</small></span>
+              <span class="e-cell d-none">
+                <input type="text" name="titre" form="ef-{{ rid }}"
+                       value="{{ info.titre }}" class="form-control form-control-sm" style="min-width:200px">
+              </span>
+            </td>
+
+            {# ACTIONS #}
+            <td>
+              <span class="v-btn d-inline-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="startEdit('{{ rid }}')" title="Modifier">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <form method="post" action="/admin/seasons/{{ saison }}/{{ code }}/delete" class="d-inline">
+                  <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
+                </form>
+              </span>
+              <span class="e-btn d-none d-inline-flex gap-1">
+                <button type="submit" form="ef-{{ rid }}" class="btn btn-sm btn-success" title="Enregistrer">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        onclick="cancelEdit('{{ rid }}')" title="Annuler">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-3">Aucune catégorie</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">Aucune saison en base. Configurez des saisons actives dans <a href="/admin/config">Configuration</a> puis cliquez sur "Sync depuis FFVB".</div>
+{% endfor %}
+
+<!-- Modal ajout catégorie -->
+<div class="modal fade" id="addCatModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Ajouter une catégorie</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/seasons/add">
+        <div class="modal-body">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">Saison</label>
+              <input type="text" name="saison" class="form-control" placeholder="2025-2026" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Code</label>
+              <input type="text" name="code" class="form-control" placeholder="RFD" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Label</label>
+              <input type="text" name="label" class="form-control" placeholder="SF">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Genre</label>
+              <select name="genre" class="form-select">
+                {% for g in genres %}<option value="{{ g }}">{{ g }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Type</label>
+              <select name="type" class="form-select">
+                {% for t in types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Niveau</label>
+              <select name="niveau" class="form-select">
+                <option value="">—</option>
+                {% for n in niveaux %}
+                <option value="{{ n }}">{{ n }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Catégorie d'âge</label>
+              <input type="text" name="category" class="form-control" placeholder="Sénior">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Titre</label>
+              <input type="text" name="titre" class="form-control" placeholder="CHAMPIONNAT REGIONAL ...">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function startEdit(id) {
+  const row = document.getElementById('row-' + id);
+  row.querySelectorAll('.v-cell, .v-btn').forEach(el => el.classList.add('d-none'));
+  row.querySelectorAll('.e-cell, .e-btn').forEach(el => el.classList.remove('d-none'));
+}
+function cancelEdit(id) {
+  const row = document.getElementById('row-' + id);
+  row.querySelectorAll('.e-cell, .e-btn').forEach(el => el.classList.add('d-none'));
+  row.querySelectorAll('.v-cell, .v-btn').forEach(el => el.classList.remove('d-none'));
+}
+</script>
+{% endblock %}

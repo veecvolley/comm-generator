@@ -1,0 +1,323 @@
+{% extends "admin/base.html" %}
+{% block title %}Template {{ tpl.name }}{% endblock %}
+
+{# ── Macro: table clé/valeur simple (string ou number) ─────────────── #}
+{% macro kv_table(sid, items, placeholder_val="valeur") %}
+<div class="table-responsive">
+  <table class="table table-sm table-bordered mb-0 align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width:38%">Clé</th>
+        <th>{{ placeholder_val }}</th>
+        <th style="width:44px"></th>
+      </tr>
+    </thead>
+    <tbody id="rows-{{ sid }}">
+      {% for k, v in items.items() %}
+      <tr class="kv-row">
+        <td><input class="kv-key form-control form-control-sm font-monospace" value="{{ k }}"></td>
+        <td><input class="kv-val form-control form-control-sm" value="{{ v }}"></td>
+        <td class="text-center">
+          <button type="button" onclick="delRow(this)"
+                  class="btn btn-sm btn-outline-danger py-0 px-1">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="px-3 py-2 border-top bg-light bg-opacity-50">
+  <button type="button" onclick="addRow('{{ sid }}')"
+          class="btn btn-sm btn-outline-secondary py-0">
+    <i class="bi bi-plus me-1"></i>Ajouter une ligne
+  </button>
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center gap-2">
+  <a href="/admin/templates" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h4 class="mb-0"><i class="bi bi-image me-2 text-primary"></i>{{ tpl.display_name or tpl.name }}</h4>
+  <code class="text-muted">{{ tpl.name }}</code>
+  {% if success %}<span class="badge bg-success ms-2">Enregistré</span>{% endif %}
+</div>
+
+{# Hidden JSON fields — filled by JS on submit #}
+<form id="tpl-form" method="post" action="/admin/templates/{{ tpl.name }}">
+  <textarea name="backgrounds" id="json-backgrounds" class="d-none"></textarea>
+  <textarea name="banners"     id="json-banners"     class="d-none"></textarea>
+  <textarea name="fonts"       id="json-fonts"       class="d-none"></textarea>
+  <textarea name="sizes"       id="json-sizes"       class="d-none"></textarea>
+  <textarea name="offsets_y"   id="json-offsets_y"   class="d-none"></textarea>
+  <textarea name="offsets_x"   id="json-offsets_x"   class="d-none"></textarea>
+
+  <div class="row g-4">
+
+    {# ── Colonne gauche : informations générales ────────────────────── #}
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-semibold">Informations</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Nom affiché</label>
+            <input type="text" name="display_name" class="form-control"
+                   value="{{ tpl.display_name }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <input type="text" name="description" class="form-control"
+                   value="{{ tpl.description }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Hérite de</label>
+            <select name="inherit_from" class="form-select">
+              <option value="">— Aucun —</option>
+              {% for t in all_templates %}
+              <option value="{{ t }}" {% if t == tpl.inherit_from %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Les clés manquantes sont héritées du template parent.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Colonne droite : sections clé/valeur ───────────────────────── #}
+    <div class="col-lg-8">
+
+      {# ── Assets ─────────────────────────────────────────────────── #}
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">
+          <i class="bi bi-image me-2 text-secondary"></i>Assets
+        </div>
+        <div class="card-body p-0">
+          <div class="p-3 border-bottom">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase tracking-wide">Backgrounds</p>
+            {{ kv_table("backgrounds", backgrounds, "Fichier image") }}
+          </div>
+          <div class="p-3">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase">Banners</p>
+            {{ kv_table("banners", banners, "Fichier image") }}
+          </div>
+        </div>
+      </div>
+
+      {# ── Polices & Tailles ───────────────────────────────────────── #}
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white fw-semibold">
+          <i class="bi bi-type me-2 text-secondary"></i>Polices &amp; Tailles
+        </div>
+        <div class="card-body p-0">
+          <div class="p-3 border-bottom">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase">Fonts <span class="fw-normal text-muted">(tailles en px)</span></p>
+            {{ kv_table("fonts", fonts, "Taille (px)") }}
+          </div>
+          <div class="p-3">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase">Sizes <span class="fw-normal text-muted">(dimensions éléments, px)</span></p>
+            {{ kv_table("sizes", sizes, "Valeur (px)") }}
+          </div>
+        </div>
+      </div>
+
+      {# ── Offsets ─────────────────────────────────────────────────── #}
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-semibold">
+          <i class="bi bi-arrows-move me-2 text-secondary"></i>Offsets (positions)
+        </div>
+        <div class="card-body p-0">
+
+          {# Offsets Y : toutes valeurs simples #}
+          <div class="p-3 border-bottom">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase">Offsets Y <span class="fw-normal text-muted">(positions verticales, px)</span></p>
+            {{ kv_table("offsets_y", offsets_y, "Position Y (px)") }}
+          </div>
+
+          {# Offsets X : valeurs simples ET objets {center, width, [offset]} #}
+          <div class="p-3">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase">Offsets X <span class="fw-normal text-muted">(positions horizontales)</span></p>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered mb-0 align-top">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:28%">Clé</th>
+                    <th>Valeur <small class="text-muted fw-normal">(nombre ou sous-champs)</small></th>
+                    <th style="width:44px"></th>
+                  </tr>
+                </thead>
+                <tbody id="rows-offsets_x">
+                  {% for k, v in offsets_x.items() %}
+                  <tr class="kv-row">
+                    <td>
+                      <input class="kv-key form-control form-control-sm font-monospace" value="{{ k }}">
+                    </td>
+                    <td>
+                      {% if v is mapping %}
+                      <div class="kv-obj">
+                        {% for sk, sv in v.items() %}
+                        <div class="d-flex align-items-center gap-1 mb-1 kv-subrow">
+                          <input class="kv-subkey form-control form-control-sm font-monospace"
+                                 value="{{ sk }}" style="max-width:90px">
+                          <span class="text-muted small flex-shrink-0">:</span>
+                          <input class="kv-subval form-control form-control-sm" value="{{ sv }}">
+                          <button type="button" onclick="delSubRow(this)"
+                                  class="btn btn-sm btn-outline-danger py-0 px-1 flex-shrink-0">
+                            <i class="bi bi-x"></i>
+                          </button>
+                        </div>
+                        {% endfor %}
+                        <button type="button" onclick="addSubRow(this)"
+                                class="btn btn-sm btn-outline-secondary py-0 mt-1">
+                          <i class="bi bi-plus"></i> sous-champ
+                        </button>
+                      </div>
+                      {% else %}
+                      <input class="kv-val form-control form-control-sm" value="{{ v }}">
+                      {% endif %}
+                    </td>
+                    <td class="text-center">
+                      <button type="button" onclick="delRow(this)"
+                              class="btn btn-sm btn-outline-danger py-0 px-1">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="px-3 py-2 border-top bg-light bg-opacity-50 d-flex gap-2">
+              <button type="button" onclick="addXSimple()"
+                      class="btn btn-sm btn-outline-secondary py-0">
+                <i class="bi bi-plus me-1"></i>Valeur simple
+              </button>
+              <button type="button" onclick="addXObj()"
+                      class="btn btn-sm btn-outline-secondary py-0">
+                <i class="bi bi-plus me-1"></i>Valeur objet
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>{# /col-lg-8 #}
+  </div>{# /row #}
+
+  <div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save me-1"></i>Enregistrer
+    </button>
+    <a href="/admin/templates" class="btn btn-outline-secondary">Annuler</a>
+  </div>
+
+</form>
+
+<script>
+/* ── Serialisation ─────────────────────────────────────────────────── */
+function parseVal(s) {
+  s = s.trim();
+  if (s === '' || isNaN(s)) return s;
+  return Number(s);
+}
+
+function collectSection(sid) {
+  const obj = {};
+  document.querySelectorAll(`#rows-${sid} .kv-row`).forEach(row => {
+    const key = row.querySelector('.kv-key').value.trim();
+    if (!key) return;
+    const subrows = row.querySelectorAll('.kv-subrow');
+    if (subrows.length > 0) {
+      const sub = {};
+      subrows.forEach(sr => {
+        const sk = sr.querySelector('.kv-subkey').value.trim();
+        const sv = sr.querySelector('.kv-subval').value.trim();
+        if (sk) sub[sk] = parseVal(sv);
+      });
+      obj[key] = sub;
+    } else {
+      const valEl = row.querySelector('.kv-val');
+      if (valEl) obj[key] = parseVal(valEl.value);
+    }
+  });
+  return obj;
+}
+
+document.getElementById('tpl-form').addEventListener('submit', function() {
+  ['backgrounds','banners','fonts','sizes','offsets_y','offsets_x'].forEach(s => {
+    document.getElementById('json-' + s).value = JSON.stringify(collectSection(s));
+  });
+});
+
+/* ── Sections simples : add/del row ────────────────────────────────── */
+function addRow(sid) {
+  const tbody = document.getElementById('rows-' + sid);
+  const tr = document.createElement('tr');
+  tr.className = 'kv-row';
+  tr.innerHTML =
+    '<td><input class="kv-key form-control form-control-sm font-monospace" placeholder="clé"></td>' +
+    '<td><input class="kv-val form-control form-control-sm" placeholder="valeur"></td>' +
+    '<td class="text-center"><button type="button" onclick="delRow(this)" class="btn btn-sm btn-outline-danger py-0 px-1"><i class="bi bi-trash"></i></button></td>';
+  tbody.appendChild(tr);
+  tr.querySelector('.kv-key').focus();
+}
+
+function delRow(btn) {
+  btn.closest('tr').remove();
+}
+
+/* ── Offsets X : lignes spécifiques ───────────────────────────────── */
+function addXSimple() {
+  const tbody = document.getElementById('rows-offsets_x');
+  const tr = document.createElement('tr');
+  tr.className = 'kv-row';
+  tr.innerHTML =
+    '<td><input class="kv-key form-control form-control-sm font-monospace" placeholder="clé"></td>' +
+    '<td><input class="kv-val form-control form-control-sm" placeholder="valeur"></td>' +
+    '<td class="text-center"><button type="button" onclick="delRow(this)" class="btn btn-sm btn-outline-danger py-0 px-1"><i class="bi bi-trash"></i></button></td>';
+  tbody.appendChild(tr);
+  tr.querySelector('.kv-key').focus();
+}
+
+function addXObj() {
+  const tbody = document.getElementById('rows-offsets_x');
+  const tr = document.createElement('tr');
+  tr.className = 'kv-row';
+  tr.innerHTML =
+    '<td><input class="kv-key form-control form-control-sm font-monospace" placeholder="clé"></td>' +
+    '<td>' +
+      '<div class="kv-obj">' +
+        '<div class="d-flex align-items-center gap-1 mb-1 kv-subrow">' +
+          '<input class="kv-subkey form-control form-control-sm font-monospace" value="center" style="max-width:90px">' +
+          '<span class="text-muted small flex-shrink-0">:</span>' +
+          '<input class="kv-subval form-control form-control-sm" placeholder="0">' +
+          '<button type="button" onclick="delSubRow(this)" class="btn btn-sm btn-outline-danger py-0 px-1 flex-shrink-0"><i class="bi bi-x"></i></button>' +
+        '</div>' +
+        '<button type="button" onclick="addSubRow(this)" class="btn btn-sm btn-outline-secondary py-0 mt-1"><i class="bi bi-plus"></i> sous-champ</button>' +
+      '</div>' +
+    '</td>' +
+    '<td class="text-center"><button type="button" onclick="delRow(this)" class="btn btn-sm btn-outline-danger py-0 px-1"><i class="bi bi-trash"></i></button></td>';
+  tbody.appendChild(tr);
+  tr.querySelector('.kv-key').focus();
+}
+
+/* ── Sous-champs (offsets_x objets) ────────────────────────────────── */
+function addSubRow(btn) {
+  const container = btn.closest('.kv-obj');
+  const div = document.createElement('div');
+  div.className = 'd-flex align-items-center gap-1 mb-1 kv-subrow';
+  div.innerHTML =
+    '<input class="kv-subkey form-control form-control-sm font-monospace" placeholder="clé" style="max-width:90px">' +
+    '<span class="text-muted small flex-shrink-0">:</span>' +
+    '<input class="kv-subval form-control form-control-sm" placeholder="0">' +
+    '<button type="button" onclick="delSubRow(this)" class="btn btn-sm btn-outline-danger py-0 px-1 flex-shrink-0"><i class="bi bi-x"></i></button>';
+  container.insertBefore(div, btn);
+  div.querySelector('.kv-subkey').focus();
+}
+
+function delSubRow(btn) {
+  btn.closest('.kv-subrow').remove();
+}
+</script>
+{% endblock %}

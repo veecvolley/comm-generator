@@ -1,0 +1,175 @@
+{% extends "admin/base.html" %}
+{% block title %}Configuration{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-gear me-2 text-primary"></i>Configuration du club</h4>
+</div>
+
+<div class="row g-4">
+  <!-- Paramètres généraux -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Paramètres généraux</div>
+      <div class="card-body">
+        <form method="post" action="/admin/config">
+          <div class="mb-3">
+            <label class="form-label fw-medium">Nom du club</label>
+            <input type="text" name="club_name" class="form-control" value="{{ settings.get('club_name', '') }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium">Identifiant FFVB <span class="text-muted">(ex: 0775819)</span></label>
+            <input type="text" name="club_id" class="form-control" value="{{ settings.get('club_id', '') }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium">Template par défaut</label>
+            <input type="text" name="default_template" class="form-control" value="{{ settings.get('default_template', 'template1') }}">
+          </div>
+          <hr>
+          <h6 class="text-muted mb-3">URLs FFVB</h6>
+          <div class="mb-3">
+            <label class="form-label fw-medium">URL CSV calendrier club</label>
+            <input type="url" name="ffvb_csv_url" class="form-control font-monospace" value="{{ settings.get('ffvb_csv_url', '') }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium">URL CSV par division</label>
+            <input type="url" name="ffvb_csv_url_division" class="form-control font-monospace" value="{{ settings.get('ffvb_csv_url_division', '') }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-medium">URL PDF adresse gymnase</label>
+            <input type="url" name="ffvb_address_pdf_url" class="form-control font-monospace" value="{{ settings.get('ffvb_address_pdf_url', '') }}">
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Enregistrer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gymnases & Saisons -->
+  <div class="col-lg-5">
+    <!-- Gymnases -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white fw-semibold">Gymnases du club</div>
+      <div class="card-body">
+        <p class="text-muted small">Les noms listés ici servent à détecter les matchs à domicile (icône intérieur/extérieur).</p>
+        <ul class="list-group list-group-flush mb-3">
+          {% for g in gymnases %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span>{{ g.name }}</span>
+            <form method="post" action="/admin/config/gymnase/{{ g.id }}/delete" class="d-inline">
+              <button class="btn btn-sm btn-outline-danger btn-icon" title="Supprimer"><i class="bi bi-trash"></i></button>
+            </form>
+          </li>
+          {% else %}
+          <li class="list-group-item px-0 text-muted">Aucun gymnase</li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="/admin/config/gymnase/add" class="d-flex gap-2">
+          <input type="text" name="name" class="form-control form-control-sm" placeholder="Nom du gymnase" required>
+          <button class="btn btn-sm btn-success"><i class="bi bi-plus"></i></button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Saisons actives -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Saisons actives</div>
+      <div class="card-body">
+        <p class="text-muted small">Format : <code>YYYY/YYYY</code></p>
+        <ul class="list-group list-group-flush mb-3">
+          {% for s in saisons %}
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span>{{ s.saison }}</span>
+            <form method="post" action="/admin/config/saison/{{ s.id }}/delete" class="d-inline">
+              <button class="btn btn-sm btn-outline-danger btn-icon"><i class="bi bi-trash"></i></button>
+            </form>
+          </li>
+          {% else %}
+          <li class="list-group-item px-0 text-muted">Aucune saison</li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="/admin/config/saison/add" class="d-flex gap-2">
+          <input type="text" name="saison" class="form-control form-control-sm" placeholder="2025/2026" required>
+          <button class="btn btn-sm btn-success"><i class="bi bi-plus"></i></button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Référentiel -->
+{# Hidden edit forms for ref values #}
+{% for cat, title in [('label','Labels'),('type','Types'),('genre','Genres'),('niveau','Niveaux')] %}
+{% for rv in ref_values[cat] %}
+<form id="rvedit-{{ rv.id }}" method="post" action="/admin/config/ref/{{ rv.id }}/edit" style="display:none"></form>
+{% endfor %}
+{% endfor %}
+
+<div class="row g-4 mt-1">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-bookmarks me-2 text-primary"></i>Référentiel — Labels, Types, Genres, Niveaux
+        <small class="text-muted fw-normal ms-2">Valeurs disponibles dans les listes déroulantes de "Saisons &amp; Catégories"</small>
+      </div>
+      <div class="card-body">
+        <div class="row g-4">
+
+          {% for cat, title in [('label','Labels'),('type','Types'),('genre','Genres'),('niveau','Niveaux')] %}
+          <div class="col-md-3">
+            <h6 class="fw-semibold mb-2">{{ title }}</h6>
+            <ul class="list-group list-group-flush mb-2">
+              {% for rv in ref_values[cat] %}
+              <li id="rvrow-{{ rv.id }}" class="list-group-item px-0 py-1">
+                <div class="d-flex align-items-center gap-1">
+                  <span class="rv-view flex-grow-1 small">{{ rv.value }}</span>
+                  <input type="text" name="value" form="rvedit-{{ rv.id }}"
+                         value="{{ rv.value }}"
+                         class="rv-edit form-control form-control-sm d-none flex-grow-1">
+                  <span class="rv-view d-inline-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1"
+                            onclick="rvStartEdit({{ rv.id }})" title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <form method="post" action="/admin/config/ref/{{ rv.id }}/delete" class="d-inline">
+                      <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Supprimer"><i class="bi bi-trash"></i></button>
+                    </form>
+                  </span>
+                  <span class="rv-edit d-none d-inline-flex gap-1">
+                    <button type="submit" form="rvedit-{{ rv.id }}" class="btn btn-sm btn-success py-0 px-1" title="Enregistrer"><i class="bi bi-check-lg"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1"
+                            onclick="rvCancelEdit({{ rv.id }})" title="Annuler"><i class="bi bi-x-lg"></i></button>
+                  </span>
+                </div>
+              </li>
+              {% else %}
+              <li class="list-group-item px-0 text-muted small">Aucune valeur</li>
+              {% endfor %}
+            </ul>
+            <form method="post" action="/admin/config/ref/{{ cat }}/add" class="d-flex gap-1">
+              <input type="text" name="value" class="form-control form-control-sm" placeholder="Ajouter…" required>
+              <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-plus"></i></button>
+            </form>
+          </div>
+          {% endfor %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function rvStartEdit(id) {
+  const row = document.getElementById('rvrow-' + id);
+  row.querySelectorAll('.rv-view').forEach(el => el.classList.add('d-none'));
+  row.querySelectorAll('.rv-edit').forEach(el => el.classList.remove('d-none'));
+  row.querySelector('input.rv-edit').focus();
+}
+function rvCancelEdit(id) {
+  const row = document.getElementById('rvrow-' + id);
+  row.querySelectorAll('.rv-edit').forEach(el => el.classList.add('d-none'));
+  row.querySelectorAll('.rv-view').forEach(el => el.classList.remove('d-none'));
+}
+</script>
+{% endblock %}

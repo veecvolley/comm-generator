@@ -1,0 +1,196 @@
+{% extends "admin/base.html" %}
+{% block title %}Données FFVB{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h4 class="mb-0"><i class="bi bi-database me-2 text-primary"></i>Données FFVB</h4>
+    {% if last_sync %}<small class="text-muted">Dernière sync : {{ last_sync.strftime('%d/%m/%Y à %H:%M') }}</small>{% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    <form method="post" action="/admin/data/sync">
+      <button class="btn btn-primary btn-sm">
+        <i class="bi bi-cloud-download me-1"></i>Synchroniser les matchs
+      </button>
+    </form>
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#syncAddrModal">
+      <i class="bi bi-geo-alt me-1"></i>Sync adresses
+    </button>
+  </div>
+</div>
+
+<!-- Filtres -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" action="/admin/data" class="row g-2 align-items-end">
+      <input type="hidden" name="sort" value="{{ sort }}">
+      <input type="hidden" name="order" value="{{ order }}">
+      <div class="col-md-2">
+        <label class="form-label">Saison</label>
+        <select name="saison" class="form-select form-select-sm">
+          {% for s in active_saisons %}
+          <option value="{{ s }}" {% if s == saison_filter %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Catégorie</label>
+        <select name="cat_code" class="form-select form-select-sm">
+          <option value="">— Toutes —</option>
+          {% for code in cat_codes %}
+          <option value="{{ code }}" {% if code == cat_code_filter %}selected{% endif %}>{{ code }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Type</label>
+        <select name="type_filter" class="form-select form-select-sm">
+          <option value="">— Tous —</option>
+          {% for t in types %}
+          <option value="{{ t }}" {% if t == type_filter %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Genre</label>
+        <select name="genre_filter" class="form-select form-select-sm">
+          <option value="">— Tous —</option>
+          {% for g in genres %}
+          <option value="{{ g }}" {% if g == genre_filter %}selected{% endif %}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-sm btn-outline-primary w-100">Filtrer</button>
+      </div>
+      <div class="col-md-2 text-end text-muted small pt-3">
+        {{ total }} match{{ 's' if total != 1 }}<br>page {{ page }}/{{ total_pages }}
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tableau -->
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            {% set base_url = '/admin/data?saison=' ~ saison_filter ~ '&cat_code=' ~ cat_code_filter ~ '&type_filter=' ~ type_filter ~ '&genre_filter=' ~ genre_filter ~ '&page=1' %}
+            {% macro sort_link(col, label) %}
+              {% if sort == col %}
+                {% set next_order = 'asc' if order == 'desc' else 'desc' %}
+                <a href="{{ base_url }}&sort={{ col }}&order={{ next_order }}" class="text-decoration-none text-dark fw-semibold">
+                  {{ label }}
+                  <i class="bi bi-caret-{{ 'up' if order == 'asc' else 'down' }}-fill text-primary ms-1" style="font-size:.7rem"></i>
+                </a>
+              {% else %}
+                <a href="{{ base_url }}&sort={{ col }}&order=asc" class="text-decoration-none text-secondary">
+                  {{ label }}
+                  <i class="bi bi-chevron-expand text-muted ms-1" style="font-size:.65rem"></i>
+                </a>
+              {% endif %}
+            {% endmacro %}
+            <th>{{ sort_link('date', 'Date') }}</th>
+            <th>{{ sort_link('time', 'H.') }}</th>
+            <th>{{ sort_link('cat_code', 'Cat.') }}</th>
+            <th>{{ sort_link('type', 'Type') }}</th>
+            <th>{{ sort_link('genre', 'Genre') }}</th>
+            <th>{{ sort_link('team_a', 'Équipe A') }}</th>
+            <th>{{ sort_link('team_b', 'Équipe B') }}</th>
+            <th>{{ sort_link('sets', 'Sets') }}</th>
+            <th>{{ sort_link('score', 'Score') }}</th>
+            <th>{{ sort_link('place', 'Lieu') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in matches %}
+          {% set cat_info = cats_map.get(m.cat_code, {}) %}
+          {% set match_type = cat_info.get('type', '') %}
+          {% set match_genre = cat_info.get('genre', '') %}
+          <tr>
+            <td><small>{{ m.date }}</small></td>
+            <td><small>{{ m.time }}</small></td>
+            <td><code>{{ m.cat_code }}</code></td>
+            <td>
+              {% if match_type %}<span class="badge text-bg-secondary">{{ match_type }}</span>{% endif %}
+            </td>
+            <td>
+              {% if match_genre %}<span class="badge text-bg-secondary">{{ match_genre }}</span>{% endif %}
+            </td>
+            <td><small>{{ m.team_a }}</small></td>
+            <td><small>{{ m.team_b }}</small></td>
+            <td>{{ m.sets }}</td>
+            <td><small class="font-monospace">{{ m.score }}</small></td>
+            <td><small class="text-muted">{{ m.place }}</small></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" class="text-center text-muted py-4">
+              Aucun match en base pour cette saison. <br>
+              <a href="#" onclick="document.querySelector('form[action=\'/admin/data/sync\']').submit()">
+                Synchroniser depuis la FFVB
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-white">
+    <nav>
+      <ul class="pagination pagination-sm mb-0 justify-content-center">
+        {% set pg_base = '/admin/data?saison=' ~ saison_filter ~ '&cat_code=' ~ cat_code_filter ~ '&type_filter=' ~ type_filter ~ '&genre_filter=' ~ genre_filter ~ '&sort=' ~ sort ~ '&order=' ~ order %}
+        {% if page > 1 %}
+        <li class="page-item">
+          <a class="page-link" href="{{ pg_base }}&page={{ page - 1 }}">Préc.</a>
+        </li>
+        {% endif %}
+        {% for p in range(1, total_pages + 1) %}
+        {% if p == page or (p >= page - 2 and p <= page + 2) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="{{ pg_base }}&page={{ p }}">{{ p }}</a>
+        </li>
+        {% endif %}
+        {% endfor %}
+        {% if page < total_pages %}
+        <li class="page-item">
+          <a class="page-link" href="{{ pg_base }}&page={{ page + 1 }}">Suiv.</a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal sync adresses -->
+<div class="modal fade" id="syncAddrModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Sync adresses gymnases</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form method="post" action="/admin/data/sync-addresses">
+        <div class="modal-body">
+          <p class="text-muted small">Récupère les adresses des gymnases pour les matchs à domicile depuis la FFVB (peut prendre plusieurs minutes).</p>
+          <div class="mb-3">
+            <label class="form-label">Saison</label>
+            <select name="saison" class="form-select">
+              {% for s in active_saisons %}
+              <option value="{{ s }}" {% if s == saison_filter %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Synchroniser</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <h4 class="mb-0"><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</h4>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small">Matchs en base</div>
+            <div class="fs-3 fw-bold text-primary">{{ total_matches }}</div>
+          </div>
+          <i class="bi bi-calendar-check fs-2 text-primary opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small">Catégories</div>
+            <div class="fs-3 fw-bold text-success">{{ nb_categories }}</div>
+          </div>
+          <i class="bi bi-tag fs-2 text-success opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small">Règles d'équipes</div>
+            <div class="fs-3 fw-bold text-warning">{{ nb_rules }}</div>
+          </div>
+          <i class="bi bi-list-check fs-2 text-warning opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small">Dernière sync</div>
+            <div class="fs-6 fw-bold text-info">
+              {% if last_sync %}{{ last_sync.strftime('%d/%m %H:%M') }}{% else %}Jamais{% endif %}
+            </div>
+          </div>
+          <i class="bi bi-arrow-repeat fs-2 text-info opacity-50"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Matchs par saison</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Saison</th><th>Matchs en base</th><th></th></tr></thead>
+          <tbody>
+            {% for saison in active_saisons %}
+            <tr>
+              <td><strong>{{ saison }}</strong></td>
+              <td>{{ stats.get(saison, 0) }}</td>
+              <td>
+                <a href="/admin/data?saison={{ saison }}" class="btn btn-sm btn-outline-secondary btn-icon">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-3">Aucune saison configurée</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white fw-semibold">Actions rapides</div>
+      <div class="card-body d-grid gap-2">
+        <form method="post" action="/admin/data/sync">
+          <button class="btn btn-primary w-100">
+            <i class="bi bi-cloud-download me-2"></i>Synchroniser les matchs FFVB
+          </button>
+        </form>
+        <form method="post" action="/admin/seasons/sync">
+          <button class="btn btn-outline-success w-100">
+            <i class="bi bi-arrow-repeat me-2"></i>Synchroniser les catégories FFVB
+          </button>
+        </form>
+        <a href="/" class="btn btn-outline-secondary w-100">
+          <i class="bi bi-image me-2"></i>Générer une image
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

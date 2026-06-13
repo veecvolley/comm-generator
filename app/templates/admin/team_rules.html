@@ -1,0 +1,205 @@
+{% extends "admin/base.html" %}
+{% block title %}Règles d'équipes{% endblock %}
+
+{% block head_extra %}
+<style>
+  .rule-row { cursor: grab; }
+  .rule-row:active { cursor: grabbing; }
+  .drag-handle { color: #adb5bd; font-size: 1.2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <h4 class="mb-0"><i class="bi bi-people me-2 text-primary"></i>Règles de pseudonymes d'équipes</h4>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+    <i class="bi bi-plus me-1"></i>Ajouter une règle
+  </button>
+</div>
+
+<!-- Pattern de détection -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">Pattern de détection du club</div>
+  <div class="card-body">
+    <p class="text-muted small">Regex insensible à la casse pour identifier si une équipe appartient au club. Si le nom d'équipe match ce pattern, les règles s'appliquent.</p>
+    <form method="post" action="/admin/team-rules/pattern" class="d-flex gap-2 align-items-end">
+      <div class="flex-grow-1">
+        <input type="text" name="pattern" class="form-control font-monospace" value="{{ detection_pattern }}" placeholder="fs val d'europe esbly coupvray">
+      </div>
+      <button class="btn btn-primary"><i class="bi bi-save me-1"></i>Enregistrer</button>
+    </form>
+  </div>
+</div>
+
+<!-- Règle par défaut -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">Règle par défaut (fallback)</div>
+  <div class="card-body">
+    <form method="post" action="/admin/team-rules/default" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Pseudo depuis</label>
+        <select name="pseudo_from" class="form-select">
+          <option value="team" {% if default_rule and default_rule.pseudo_template == 'team' %}selected{% endif %}>Nom d'équipe</option>
+          <option value="label" {% if default_rule and default_rule.pseudo_template == 'label' %}selected{% endif %}>Label</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Taille de police</label>
+        <select name="font_size" class="form-select">
+          {% for fs in font_sizes %}
+          <option value="{{ fs }}" {% if default_rule and default_rule.font_size == fs %}selected{% endif %}>{{ fs }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button class="btn btn-primary w-100"><i class="bi bi-save me-1"></i>Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Liste des règles -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+    <span>Règles <span class="badge bg-secondary">{{ rules|length }}</span></span>
+    <small class="text-muted">Glisser-déposer pour réordonner</small>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th style="width:30px"></th>
+            <th>#</th>
+            <th>Critères de match</th>
+            <th>Résultat</th>
+            <th>Police</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="rules-table">
+          {% for rule in rules %}
+          <tr class="rule-row" data-id="{{ rule.id }}">
+            <td><i class="bi bi-grip-vertical drag-handle"></i></td>
+            <td><small class="text-muted">{{ loop.index }}</small></td>
+            <td>
+              {% if rule.match_label %}<span class="badge bg-primary me-1">label={{ rule.match_label }}</span>{% endif %}
+              {% if rule.match_genre %}<span class="badge bg-info me-1">genre={{ rule.match_genre }}</span>{% endif %}
+              {% if rule.match_type %}<span class="badge bg-secondary me-1">type={{ rule.match_type }}</span>{% endif %}
+              {% if rule.match_niveau %}<span class="badge bg-light text-dark border me-1">niveau={{ rule.match_niveau }}</span>{% endif %}
+              {% if rule.match_titre %}<span class="badge bg-warning text-dark me-1" title="{{ rule.match_titre }}">titre=…</span>{% endif %}
+            </td>
+            <td>
+              {% if rule.pseudo %}<code>{{ rule.pseudo }}</code>{% endif %}
+              {% if rule.pseudo_template %}<code>{{ rule.pseudo_template }}</code>{% endif %}
+              {% if rule.auto_num %}<span class="badge bg-info ms-1">auto_num</span>{% endif %}
+            </td>
+            <td><code>{{ rule.font_size }}</code></td>
+            <td>
+              <div class="d-flex gap-1">
+                <button class="btn btn-icon btn-outline-secondary btn-sm"
+                        data-bs-toggle="modal" data-bs-target="#editRuleModal"
+                        data-id="{{ rule.id }}"
+                        data-label="{{ rule.match_label }}"
+                        data-genre="{{ rule.match_genre }}"
+                        data-type="{{ rule.match_type }}"
+                        data-niveau="{{ rule.match_niveau }}"
+                        data-titre="{{ rule.match_titre }}"
+                        data-pseudo="{{ rule.pseudo }}"
+                        data-template="{{ rule.pseudo_template }}"
+                        data-font="{{ rule.font_size }}"
+                        data-autonum="{{ rule.auto_num | lower }}">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <form method="post" action="/admin/team-rules/{{ rule.id }}/delete" class="d-inline">
+                  <button class="btn btn-icon btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-3">Aucune règle définie</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ajout règle -->
+<div class="modal fade" id="addRuleModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Ajouter une règle</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form method="post" action="/admin/team-rules/add">
+        <div class="modal-body">
+          {% include "admin/_rule_fields.html" %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal édition règle -->
+<div class="modal fade" id="editRuleModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Modifier la règle</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form method="post" id="editRuleForm">
+        <div class="modal-body">
+          {% include "admin/_rule_fields.html" %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+// Drag-and-drop reorder
+const tbody = document.getElementById('rules-table');
+if (tbody) {
+  Sortable.create(tbody, {
+    animation: 150,
+    handle: '.drag-handle',
+    ghostClass: 'sortable-ghost',
+    onEnd: () => {
+      const order = [...tbody.querySelectorAll('tr[data-id]')].map(r => parseInt(r.dataset.id));
+      fetch('/admin/team-rules/reorder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({order})
+      });
+    }
+  });
+}
+
+// Populate edit modal
+document.querySelectorAll('[data-bs-target="#editRuleModal"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.id;
+    const form = document.getElementById('editRuleForm');
+    form.action = `/admin/team-rules/${id}/edit`;
+    form.querySelector('[name=match_label]').value = btn.dataset.label || '';
+    form.querySelector('[name=match_genre]').value = btn.dataset.genre || '';
+    form.querySelector('[name=match_type]').value = btn.dataset.type || '';
+    form.querySelector('[name=match_niveau]').value = btn.dataset.niveau || '';
+    form.querySelector('[name=match_titre]').value = btn.dataset.titre || '';
+    form.querySelector('[name=pseudo]').value = btn.dataset.pseudo || '';
+    form.querySelector('[name=pseudo_template]').value = btn.dataset.template || '';
+    form.querySelector('[name=font_size]').value = btn.dataset.font || 'bold_25';
+    form.querySelector('[name=auto_num]').checked = btn.dataset.autonum === 'true';
+  });
+});
+</script>
+{% endblock %}

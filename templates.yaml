@@ -1,0 +1,347 @@
+# Configuration des templates pour la génération d'images
+# Chaque template définit les positions, tailles et assets pour le rendu
+
+# Template par défaut utilisé si non spécifié
+default_template: "template1"
+
+templates:
+  # Template 1 : Design original (valeurs actuelles)
+  template1:
+    name: "Design Original"
+    description: "Le design actuel utilisé par défaut"
+
+    # Images de fond pour chaque format
+    backgrounds:
+      pub: "pub.png"
+      story: "story.png"
+
+    # Bannières pour les différents modes et résultats
+    banners:
+      planning: "planning.png"
+      result_green: "result_green.png"
+      result_red: "result_red.png"
+      result_yellow: "result_yellow.png"
+
+    # Tailles de polices (× multiplier)
+    fonts:
+      main: 50
+      bold_10: 10
+      bold_12: 12
+      bold_13: 13
+      bold_14: 14
+      bold_15: 15
+      bold_25: 25
+      title: 35
+      sets: 30
+      victory: 25
+      date_title: 20
+
+    # Offsets verticaux (positions Y × multiplier)
+    offsets_y:
+      base: 200          # Position verticale de base du premier match
+      title: 68          # Titre principal de l'image
+      date_title: 130    # Titre de la période
+      entity: 215        # Niveau du championnat
+      category: 240      # Type de sport
+      team_name: 260     # Nom de l'équipe
+      delta: 80          # Espacement vertical entre les matchs
+      logo: 205          # Position des logos des clubs
+      team: 235          # Noms des équipes
+      date: 235          # Date et heure du match
+      place: 217         # Nom du gymnase
+      place_type: 220    # Icône intérieur/extérieur
+      sets: 238          # Sets (mode résultats)
+      victory: 238       # Texte victoire/défaite
+      score: 202         # Score (mode résultats)
+
+    # Positions horizontales (× multiplier)
+    offsets_x:
+      title:
+        center: 1030
+        width: 660
+      date_title:
+        center: 1030
+        width: 860
+      entity:
+        center: 115
+        width: 95
+      category:
+        center: 115
+        width: 95
+      team_name:
+        center: 115
+        width: 95
+      logo_a: 170        # Logo équipe A
+      team_a:
+        center: 120
+        width: 310
+      logo_b: 425        # Logo équipe B
+      team_b:
+        center: 120
+        width: 560
+      victory:
+        center: 200
+        width: 705
+      sets:
+        center: 100
+        width: 828
+      score: 876
+      date:
+        center: 100
+        width: 705
+      place_nom:
+        center: 210
+        width: 882
+      place_adr:
+        center: 210
+        width: 882
+        offset: 20       # Offset additionnel pour l'adresse
+      place_ville:
+        center: 210
+        width: 882
+        offset: 40       # Offset additionnel pour la ville
+      place_icon: 995
+
+    # Tailles des éléments (× multiplier)
+    sizes:
+      logo_width: 65
+      logo_height: 65
+      place_icon: 40
+
+  beach:
+    name: "Design Beach-Volley"
+    description: "Le design special beach"
+
+    # Images de fond pour chaque format
+    backgrounds:
+      pub: "pub_beach.png"
+      story: "story_beach.png"
+
+    # Bannières pour les différents modes et résultats
+    banners:
+      planning: "planning_beach.png"
+      result_green: "result_green.png"
+      result_red: "result_red.png"
+      result_yellow: "result_yellow.png"
+
+    # Tailles de polices (× multiplier)
+    fonts:
+      main: 50
+      bold_10: 10
+      bold_12: 12
+      bold_13: 13
+      bold_14: 14
+      bold_15: 15
+      bold_25: 25
+      title: 35
+      sets: 30
+      victory: 25
+      date_title: 20
+
+    # Offsets verticaux (positions Y × multiplier)
+    offsets_y:
+      base: 200          # Position verticale de base du premier match
+      title: 68          # Titre principal de l'image
+      date_title: 130    # Titre de la période
+      entity: 215        # Niveau du championnat
+      category: 240      # Type de sport
+      team_name: 260     # Nom de l'équipe
+      delta: 80          # Espacement vertical entre les matchs
+      logo: 205          # Position des logos des clubs
+      team: 235          # Noms des équipes
+      date: 235          # Date et heure du match
+      place: 217         # Nom du gymnase
+      place_type: 220    # Icône intérieur/extérieur
+      sets: 238          # Sets (mode résultats)
+      victory: 238       # Texte victoire/défaite
+      score: 202         # Score (mode résultats)
+
+    # Positions horizontales (× multiplier)
+    offsets_x:
+      title:
+        center: 1030
+        width: 660
+      date_title:
+        center: 1030
+        width: 860
+      entity:
+        center: 115
+        width: 95
+      category:
+        center: 115
+        width: 95
+      team_name:
+        center: 115
+        width: 95
+      logo_a: 170        # Logo équipe A
+      team_a:
+        center: 120
+        width: 310
+      logo_b: 425        # Logo équipe B
+      team_b:
+        center: 120
+        width: 560
+      victory:
+        center: 200
+        width: 705
+      sets:
+        center: 100
+        width: 828
+      score: 876
+      date:
+        center: 100
+        width: 705
+      place_nom:
+        center: 210
+        width: 882
+      place_adr:
+        center: 210
+        width: 882
+        offset: 20       # Offset additionnel pour l'adresse
+      place_ville:
+        center: 210
+        width: 882
+        offset: 40       # Offset additionnel pour la ville
+      place_icon: 995
+
+    # Tailles des éléments (× multiplier)
+    sizes:
+      logo_width: 65
+      logo_height: 65
+      place_icon: 40
+
+
+  # Template 2 : Design compact avec espacement réduit
+  template2:
+    name: "Design Compact"
+    description: "Version avec espacement réduit entre les matchs"
+    inherit_from: "template1"
+
+    # Modifications par rapport au template1
+    offsets_y:
+      delta: 60          # Espacement réduit (80 -> 60)
+
+
+  # Template 3 : Design large avec éléments plus grands
+  template3:
+    name: "Design Large"
+    description: "Version avec éléments plus grands et plus espacés"
+    inherit_from: "template1"
+
+    # Modifications par rapport au template1
+    fonts:
+      title: 45          # Titre plus grand (35 -> 45)
+      date_title: 25     # Date titre plus grande (20 -> 25)
+      bold_15: 18        # Textes légèrement plus grands
+
+    offsets_y:
+      delta: 100         # Espacement augmenté (80 -> 100)
+
+    sizes:
+      logo_width: 75     # Logos plus grands (65 -> 75)
+      logo_height: 75
+      place_icon: 45     # Icône plus grande (40 -> 45)
+
+  # Template 1 : Design original (valeurs actuelles)
+  Insta01:
+    name: "Design Insta"
+    description: "Design utilisé exclusivement pour Insta"
+
+    # Images de fond pour chaque format
+    backgrounds:
+      pub: "pub.png"
+      story: "story.png"
+
+    # Bannières pour les différents modes et résultats
+    banners:
+      planning: "planning.png"
+      result_green: "result_green.png"
+      result_red: "result_red.png"
+      result_yellow: "result_yellow.png"
+
+    # Tailles de polices (× multiplier)
+    fonts:
+      main: 50
+      bold_10: 10
+      bold_12: 12
+      bold_13: 13
+      bold_14: 14
+      bold_15: 15
+      bold_25: 25
+      title: 35
+      sets: 30
+      victory: 25
+      date_title: 20
+
+    # Offsets verticaux (positions Y × multiplier)
+    offsets_y:
+      base: 200          # Position verticale de base du premier match
+      title: 68          # Titre principal de l'image
+      date_title: 130    # Titre de la période
+      entity: 215        # Niveau du championnat
+      category: 240      # Type de sport
+      team_name: 260     # Nom de l'équipe
+      delta: 80          # Espacement vertical entre les matchs
+      logo: 205          # Position des logos des clubs
+      team: 235          # Noms des équipes
+      date: 235          # Date et heure du match
+      place: 217         # Nom du gymnase
+      place_type: 220    # Icône intérieur/extérieur
+      sets: 238          # Sets (mode résultats)
+      victory: 238       # Texte victoire/défaite
+      score: 202         # Score (mode résultats)
+
+    # Positions horizontales (× multiplier)
+    offsets_x:
+      title:
+        center: 1030
+        width: 660
+      date_title:
+        center: 1030
+        width: 860
+      entity:
+        center: 115
+        width: 95
+      category:
+        center: 115
+        width: 95
+      team_name:
+        center: 115
+        width: 95
+      logo_a: 170        # Logo équipe A
+      team_a:
+        center: 120
+        width: 310
+      logo_b: 425        # Logo équipe B
+      team_b:
+        center: 120
+        width: 560
+      victory:
+        center: 200
+        width: 705
+      sets:
+        center: 100
+        width: 828
+      score: 876
+      date:
+        center: 100
+        width: 705
+      place_nom:
+        center: 210
+        width: 882
+      place_adr:
+        center: 210
+        width: 882
+        offset: 40       # Offset additionnel pour l'adresse
+      place_ville:
+        center: 210
+        width: 882
+        offset: 80       # Offset additionnel pour la ville
+      place_icon: 995
+
+    # Tailles des éléments (× multiplier)
+    sizes:
+      logo_width: 65
+      logo_height: 65
+      place_icon: 40
+

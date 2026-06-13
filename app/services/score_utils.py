@@ -1,6 +1,7 @@
 
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
+from app.core.colors import SCORE_WIN_BG, SCORE_WIN_FG, SCORE_LOSE_BG, SCORE_LOSE_FG
 
 BASE_PATH = Path(__file__).resolve().parent.parent
 ASSETS_DIR = BASE_PATH / "assets"
@@ -15,7 +16,13 @@ def format_sets(sets):
         return f"{a} - {b}"
     return sets
 
-def did_team_a_win(sets):
+def did_team_a_win(sets: str) -> bool | None:
+    """
+    Détermine si l'équipe A a gagné basé sur le score des sets.
+
+    :param sets: Score au format "X/Y" (ex: "3/1")
+    :return: True si équipe A gagne, False si elle perd, None si égalité ou format invalide
+    """
     if not sets or '/' not in sets:
         return None
     parts = sets.strip().split('/')
@@ -24,15 +31,12 @@ def did_team_a_win(sets):
         if a == b:
             return None  # Égalité
         return a > b
-    return a < b
+    # Format invalide
+    return None
 
 def create_score_image(score):
     FONT_SIZE = 40
     OFFSET_Y = -5
-    COLOR_WIN_BG = (253, 197, 5)
-    COLOR_WIN_FG = (87, 87, 87)
-    COLOR_LOSE_BG = (38, 38, 38)
-    COLOR_LOSE_FG = (255, 255, 255)
 
     sets = []
     for s in score.split(','):
@@ -58,8 +62,8 @@ def create_score_image(score):
         y_top = padding
         y_bottom = y_top + box_height + padding
 
-        bg_a, fg_a = (COLOR_WIN_BG, COLOR_WIN_FG) if a > b else (COLOR_LOSE_BG, COLOR_LOSE_FG)
-        bg_b, fg_b = (COLOR_WIN_BG, COLOR_WIN_FG) if b > a else (COLOR_LOSE_BG, COLOR_LOSE_FG)
+        bg_a, fg_a = (SCORE_WIN_BG, SCORE_WIN_FG) if a > b else (SCORE_LOSE_BG, SCORE_LOSE_FG)
+        bg_b, fg_b = (SCORE_WIN_BG, SCORE_WIN_FG) if b > a else (SCORE_LOSE_BG, SCORE_LOSE_FG)
 
         a_text = str(a)
         a_width = draw.textlength(a_text, font=font)

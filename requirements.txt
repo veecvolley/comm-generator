@@ -1,10 +1,27 @@
-pillow
-fastapi
-uvicorn
-requests
-pdfplumber
-jinja2
-pyyaml
-httpx
-requests-cache
-bs4
+# Core dependencies with versions
+pillow==10.4.0
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.10.3
+python-dotenv==1.0.1
+sqlalchemy==2.0.36
+python-multipart>=0.0.18
+
+# Data processing
+requests==2.32.3
+pdfplumber==0.11.4
+pyyaml==6.0.2
+httpx==0.27.2
+requests-cache==1.2.1
+
+# Web scraping
+beautifulsoup4==4.12.3
+
+# Templates
+jinja2==3.1.4
+
+# Development and Testing (optional, use requirements-dev.txt in production)
+pytest==8.3.4
+pytest-cov==6.0.0
+pytest-asyncio==0.24.0
+httpx==0.27.2  # Already listed above but needed for TestClient

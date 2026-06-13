@@ -1,0 +1,285 @@
+# Configuration des règles de pseudonymes d'équipes
+# Les règles sont évaluées dans l'ordre, la première correspondance gagne
+# Plus les règles sont spécifiques, plus elles doivent être en haut
+
+team_detection_pattern: "fs val d'europe esbly coupvray"
+
+rules:
+  # SVA - Volley-Assis
+  - match:
+      label: "SVA"
+      type: "Volley-Assis"
+    result:
+      pseudo: "SVA"
+      font_size: "bold_25"
+
+  # Seniors Féminins - Championnat Régional
+  - match:
+      label: "SF"
+      genre: "Féminin"
+      type: "Volley-Ball"
+      niveau: "Championnat Régional"
+    result:
+      pseudo_template: "SF{num}"
+      font_size: "bold_25"
+
+  # Seniors Féminins - Championnat Départemental
+  - match:
+      label: "SF"
+      genre: "Féminin"
+      type: "Volley-Ball"
+      niveau: "Championnat Départemental"
+    result:
+      pseudo_template: "SF{num}"
+      font_size: "bold_25"
+
+  # Seniors Masculins - Championnat Régional
+  - match:
+      label: "SM"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Championnat Régional"
+    result:
+      pseudo_template: "SM{num}"
+      font_size: "bold_25"
+
+  # Seniors Masculins - Coupe de S&M
+  - match:
+      label: "SM"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Coupe de Seine & Marne"
+    result:
+      pseudo_template: "SM{num}"
+      font_size: "bold_25"
+
+  # Seniors Masculins - Championnat Départemental
+  - match:
+      label: "SM"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Championnat Départemental"
+    result:
+      pseudo_template: "SM{num}"
+      font_size: "bold_25"
+
+  # M15F - Championnat Régional
+  - match:
+      label: "M15F"
+      genre: "Féminin"
+      type: "Volley-Ball"
+      niveau: "Championnat Régional"
+    result:
+      pseudo: "M15F-1"
+      font_size: "bold_25"
+
+  # M15F - Championnat Départemental
+  - match:
+      label: "M15F"
+      genre: "Féminin"
+      type: "Volley-Ball"
+      niveau: "Championnat Départemental"
+    result:
+      pseudo: "M15F-2"
+      font_size: "bold_25"
+
+  # M15F - Coupe Ile-de-France
+  - match:
+      label: "M15F"
+      genre: "Féminin"
+      type: "Volley-Ball"
+      niveau: "Coupe Ile-de-France"
+    result:
+      pseudo: "M15F"
+      font_size: "bold_25"
+
+  # M15G - Championnat Départemental
+  - match:
+      label: "M15G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Championnat Départemental"
+    result:
+      pseudo: "M15G"
+      font_size: "bold_25"
+
+  # M15G - Coupe Ile-de-France
+  - match:
+      label: "M15G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Coupe Ile-de-France"
+    result:
+      pseudo: "M15G"
+      font_size: "bold_25"
+
+  # M18F - Poule B (règle spécifique basée sur le titre)
+  - match:
+      label: "M18F"
+      genre: "Féminin"
+      type: "Volley-Ball"
+      #titre: "[J] M18 FEMININ 6x6 - Ph1 - Poule B"
+      titre: "[J] M18 FEMININ 6x6 - Ph2 - Poule G"
+    result:
+      pseudo: "M18F-2"
+      font_size: "bold_25"
+
+  # M18F - Poule C (règle spécifique basée sur le titre)
+  - match:
+      label: "M18F"
+      genre: "Féminin"
+      type: "Volley-Ball"
+      #titre: "[J] M18 FEMININ 6x6 - Ph1 - Poule C"
+      titre: "[J] M18 FEMININ 6x6 - Ph2 - Poule E"
+    result:
+      pseudo: "M18F-1"
+      font_size: "bold_25"
+
+  # M18F - Cas général
+  - match:
+      label: "M18F"
+      genre: "Féminin"
+      type: "Volley-Ball"
+    result:
+      pseudo: "M18F"
+      font_size: "bold_25"
+
+  # M18G - Championnat Régional
+  - match:
+      label: "M18G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Championnat Régional"
+    result:
+      pseudo: "M18G-1"
+      font_size: "bold_25"
+
+  # M18G - Qualifications Régionales
+  - match:
+      label: "M18G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Qualifications Régionales"
+    result:
+      pseudo: "M18G-1"
+      font_size: "bold_25"
+
+  # M18G - Championnat Départemental
+  - match:
+      label: "M18G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Championnat Départemental"
+    result:
+      pseudo: "M18G-2"
+      font_size: "bold_25"
+
+  # M18G - Cas général
+  - match:
+      label: "M18G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+    result:
+      pseudo: "M18G"
+      font_size: "bold_25"
+
+  # M13G - Championnat Régional
+  - match:
+      label: "M13G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Championnat Régional"
+    result:
+      pseudo: "M13G-1"
+      font_size: "bold_25"
+
+  # M13G - Championnat Départemental
+  - match:
+      label: "M13G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+      niveau: "Championnat Départemental"
+    result:
+      pseudo: "M13G-2"
+      font_size: "bold_25"
+
+  # M13G - Cas général
+  - match:
+      label: "M13G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+    result:
+      pseudo: "M13G"
+      font_size: "bold_25"
+
+  # M13F - Cas général
+  - match:
+      label: "M13F"
+      genre: "Féminin"
+      type: "Volley-Ball"
+    result:
+      pseudo_template: "{label}"
+      font_size: "bold_25"
+
+  # M21G - Cas général
+  - match:
+      label: "M21G"
+      genre: "Masculin"
+      type: "Volley-Ball"
+    result:
+      pseudo: "M21G"
+      font_size: "bold_25"
+
+  - match:
+      label: "M18G"
+      genre: "Masculin"
+      type: "Beach-Volley"
+      titre: "[B] TOUR REGIONAL - CDF DE BEACH VOLLEY M18 MASCULIN : POULE D"
+    result:
+      pseudo: "M18G-1"
+      font_size: "bold_25"
+
+  # M18F - Beach (2025-2026, label: M18)
+  - match:
+      label: "M18"
+      genre: "Féminin"
+      type: "Beach-Volley"
+    result:
+      pseudo: "M18F"
+      auto_num: true
+      font_size: "bold_25"
+
+  # M18G - Beach (2025-2026, label: M18)
+  - match:
+      label: "M18"
+      genre: "Masculin"
+      type: "Beach-Volley"
+    result:
+      pseudo: "M18G"
+      auto_num: true
+      font_size: "bold_25"
+
+  # Senior masculin - Beach (2025-2026, label: SM)
+  - match:
+      label: "SM"
+      genre: "Masculin"
+      type: "Beach-Volley"
+    result:
+      pseudo: "SM"
+      auto_num: true
+      font_size: "bold_25"
+
+  # Senior féminin - Beach (2025-2026, label: SF)
+  - match:
+      label: "SF"
+      genre: "Féminin"
+      type: "Beach-Volley"
+    result:
+      pseudo: "SF"
+      auto_num: true
+      font_size: "bold_25"
+
+# Fallback par défaut si aucune règle ne correspond
+default:
+  pseudo_from: "team"
+  font_size: "bold_15"

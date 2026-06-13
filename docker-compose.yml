@@ -1,0 +1,87 @@
+# Docker Compose pour Comm'Generator
+# Usage:
+#   Production: docker-compose up -d
+#   Development: docker-compose --profile dev up -d
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # Application principale (Production)
+  # ==========================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: veec-comm-generator:latest
+    container_name: comm-generator
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_LEVEL=INFO
+      - CACHE_EXPIRY_MINUTES=60
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      # Monter les fichiers de configuration
+      - ./config.yaml:/app/config.yaml:ro
+      - ./saisons.yaml:/app/saisons.yaml:ro
+      - ./team_rules.yaml:/app/team_rules.yaml:ro
+      # Monter les assets (logos, fonts, etc.)
+      - ./app/assets:/app/app/assets:ro
+      # Cache persistant
+      - cache_data:/tmp/comm_generator_cache
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "com.veec-volley.app=comm-generator"
+      - "com.veec-volley.version=1.0.0"
+
+  # ==========================================
+  # Application en mode développement
+  # ==========================================
+  app-dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: veec-comm-generator:dev
+    container_name: comm-generator-dev
+    restart: "no"
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_LEVEL=DEBUG
+      - CACHE_EXPIRY_MINUTES=5
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RELOAD=true
+    volumes:
+      # En dev, monter le code source pour hot-reload
+      - ./app:/app/app:rw
+      - ./run.py:/app/run.py:rw
+      - ./config.yaml:/app/config.yaml:rw
+      - ./saisons.yaml:/app/saisons.yaml:rw
+      - ./team_rules.yaml:/app/team_rules.yaml:rw
+      # Cache
+      - cache_data_dev:/tmp/comm_generator_cache
+    networks:
+      - app-network
+    command: ["uvicorn", "run:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+volumes:
+  cache_data:
+    driver: local
+  cache_data_dev:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

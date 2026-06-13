@@ -1,0 +1,56 @@
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label">Label (critère)</label>
+    <input type="text" name="match_label" class="form-control" placeholder="SF, SM, M15F, ...">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Genre (critère)</label>
+    <select name="match_genre" class="form-select">
+      <option value="">— Tous —</option>
+      <option>Féminin</option><option>Masculin</option><option>Mixte</option>
+    </select>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Type de volley (critère)</label>
+    <select name="match_type" class="form-select">
+      <option value="">— Tous —</option>
+      <option>Volley-Ball</option><option>Beach-Volley</option><option>Volley-Assis</option>
+    </select>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Niveau (critère)</label>
+    <input type="text" name="match_niveau" class="form-control" placeholder="Championnat Régional, ...">
+  </div>
+  <div class="col-12">
+    <label class="form-label">Titre exact (critère optionnel)</label>
+    <input type="text" name="match_titre" class="form-control" placeholder="[J] M18 FEMININ 6x6 - ...">
+  </div>
+  <hr>
+  <div class="col-md-4">
+    <label class="form-label">Pseudo statique</label>
+    <input type="text" name="pseudo" class="form-control" placeholder="M15F-1">
+    <div class="form-text">Valeur fixe</div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Pseudo template</label>
+    <input type="text" name="pseudo_template" class="form-control" placeholder="SF{num}">
+    <div class="form-text">Utilise <code>{num}</code>, <code>{label}</code></div>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Taille de police</label>
+    <select name="font_size" class="form-select">
+      <option value="bold_10">bold_10</option>
+      <option value="bold_12">bold_12</option>
+      <option value="bold_13">bold_13</option>
+      <option value="bold_14">bold_14</option>
+      <option value="bold_15">bold_15</option>
+      <option value="bold_25" selected>bold_25</option>
+    </select>
+  </div>
+  <div class="col-12">
+    <div class="form-check">
+      <input type="checkbox" name="auto_num" value="true" class="form-check-input" id="auto_num_check">
+      <label class="form-check-label" for="auto_num_check">auto_num — ajoute le numéro d'équipe automatiquement</label>
+    </div>
+  </div>
+</div>
