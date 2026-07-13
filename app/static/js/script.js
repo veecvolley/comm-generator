@@ -93,56 +93,94 @@ async function loadTemplates() {
 async function loadCategoriesForSeason() {
   const saisonRaw = document.getElementById("saison")?.value || "";
   const saison = normalizeSeason(saisonRaw);
-  const sel = document.getElementById("categories");
+  const tbody = document.getElementById("catTableBody");
+  if (!tbody) return;
 
-  sel.innerHTML = "";
-  const loadingOpt = document.createElement("option");
-  loadingOpt.text = "Chargement des catégories…";
-  loadingOpt.disabled = true;
-  loadingOpt.selected = true;
-  sel.add(loadingOpt);
+  tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-2 small">Chargement…</td></tr>';
 
   try {
     const resp = await fetch("/categories?saison=" + encodeURIComponent(saison));
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     const data = await resp.json();
 
-    sel.innerHTML = "";
-
-    // Group by info.type using <optgroup>
-    const groups = {};
+    tbody.innerHTML = "";
     Object.entries(data).forEach(([code, info]) => {
-      const groupKey = info.type || "Autres";
-      if (!groups[groupKey]) groups[groupKey] = [];
-      groups[groupKey].push({ code, info });
-    });
+      const tr = document.createElement("tr");
+      const searchText = [info.label, info.type, info.genre, info.niveau, info.titre, code]
+        .filter(Boolean).join(" ").toLowerCase();
+      tr.dataset.search = searchText;
 
-    Object.entries(groups).forEach(([groupKey, items]) => {
-      const grp = document.createElement("optgroup");
-      grp.label = groupKey;
-      items.forEach(({ code, info }) => {
-        const opt = document.createElement("option");
-        opt.value = code;
-        const label = info.label || code;
-        const genre = info.genre ? ` ${info.genre}` : "";
-        opt.text = `[${label}]${genre}`;
-        grp.appendChild(opt);
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "form-check-input cat-check";
+      cb.value = code;
+      cb.checked = true;
+
+      const tdCb = document.createElement("td");
+      tdCb.appendChild(cb);
+
+      const tdLabel  = document.createElement("td");
+      tdLabel.className = "small";
+      tdLabel.textContent = info.label || code;
+
+      const tdType   = document.createElement("td");
+      tdType.className = "small";
+      tdType.textContent = info.type || "";
+
+      const tdGenre  = document.createElement("td");
+      tdGenre.className = "small";
+      tdGenre.textContent = info.genre || "";
+
+      const tdNiveau = document.createElement("td");
+      tdNiveau.className = "small";
+      tdNiveau.textContent = info.niveau || "";
+
+      const tdTitre  = document.createElement("td");
+      tdTitre.className = "small";
+      tdTitre.textContent = info.titre || code;
+
+      tr.append(tdCb, tdLabel, tdType, tdGenre, tdNiveau, tdTitre);
+
+      // Clic sur la ligne entière coche/décoche
+      tr.style.cursor = "pointer";
+      tr.addEventListener("click", (e) => {
+        if (e.target !== cb) cb.checked = !cb.checked;
       });
-      sel.add(grp);
+
+      tbody.appendChild(tr);
     });
 
-    // Sélectionne tout par défaut si rien n'est coché
-    if (sel.options.length && !Array.from(sel.options).some(o => o.selected)) {
-      Array.from(sel.options).forEach(o => (o.selected = true));
+    if (!tbody.children.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-2 small">Aucune catégorie</td></tr>';
     }
   } catch (e) {
     console.error("Erreur catégories:", e);
-    sel.innerHTML = "";
-    const errOpt = document.createElement("option");
-    errOpt.text = "Erreur de chargement des catégories";
-    errOpt.disabled = true;
-    sel.add(errOpt);
+    tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center py-2 small">Erreur de chargement</td></tr>';
   }
+}
+
+// --- Filtre texte catégories ---
+function setupCatFilter() {
+  const filterInput  = document.getElementById("catFilter");
+  const selectAllBtn = document.getElementById("catSelectAll");
+
+  filterInput?.addEventListener("input", () => {
+    const q = filterInput.value.toLowerCase();
+    document.querySelectorAll("#catTableBody tr[data-search]").forEach(tr => {
+      tr.style.display = tr.dataset.search.includes(q) ? "" : "none";
+    });
+  });
+
+  selectAllBtn?.addEventListener("click", () => {
+    const visible = Array.from(
+      document.querySelectorAll("#catTableBody tr[data-search]")
+    ).filter(tr => tr.style.display !== "none");
+    const allChecked = visible.every(tr => tr.querySelector(".cat-check")?.checked);
+    visible.forEach(tr => {
+      const cb = tr.querySelector(".cat-check");
+      if (cb) cb.checked = !allChecked;
+    });
+  });
 }
 
 // --- Status message ---
@@ -164,6 +202,32 @@ function showStatus(msg, type = "info", autohideMs = 3000) {
     }, autohideMs);
   }
 }
+
+// --- Sync FFVB button ---
+const syncFfvbBtn = document.getElementById("syncFfvbBtn");
+
+syncFfvbBtn?.addEventListener("click", async () => {
+  if (syncFfvbBtn.disabled) return;
+  try {
+    syncFfvbBtn.disabled = true;
+    syncFfvbBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+    showStatus("Synchronisation FFVB en cours…", "info", 0);
+    const resp = await fetch("/sync-ffvb", { method: "POST" });
+    const data = await resp.json();
+    const msg = `FFVB sync : ${data.inserted} insérés, ${data.updated} mis à jour`
+      + (data.errors?.length ? ` — ${data.errors.length} erreur(s)` : "");
+    showStatus(msg, data.errors?.length ? "error" : "ok", 4000);
+    if (data.last_sync) {
+      const lbl = document.getElementById("lastSyncLabel");
+      if (lbl) lbl.innerHTML = `<i class="bi bi-clock me-1"></i>${data.last_sync}`;
+    }
+  } catch (err) {
+    showStatus("Échec sync FFVB : " + err, "error", 0);
+  } finally {
+    syncFfvbBtn.disabled = false;
+    syncFfvbBtn.innerHTML = '<i class="bi bi-cloud-download"></i>';
+  }
+});
 
 // --- Refresh config button ---
 const refreshConfigBtn = document.getElementById("refreshConfigBtn");
@@ -242,10 +306,10 @@ async function submitForm(e) {
   const title     = document.getElementById("title").value;
   const format    = document.querySelector('input[name="format"]:checked').value;
   const template  = document.getElementById("template").value;
-  const cats      = Array.from(document.getElementById("categories").selectedOptions).map(opt => opt.value);
+  const cats      = Array.from(document.querySelectorAll("#catTableBody .cat-check:checked")).map(cb => cb.value);
   const date_start = document.getElementById("date_start").value;
   const date_end   = document.getElementById("date_end").value;
-  const mode       = document.getElementById("mode").value;
+  const mode       = document.querySelector('input[name="mode"]:checked').value;
 
   let url = "/image?mode=" + encodeURIComponent(mode);
   if (cats.length)  url += "&" + cats.map(c => "categories=" + encodeURIComponent(c)).join("&");
@@ -420,6 +484,19 @@ function setupImageActions() {
   });
 }
 
+// --- Hauteur tableau catégories calée sur la colonne gauche ---
+function syncCatTableHeight() {
+  const leftCard  = document.querySelector(".col-lg-3 .card");
+  const wrapper   = document.getElementById("catTableWrapper");
+  if (!leftCard || !wrapper) return;
+
+  // Hauteur de la carte gauche moins le padding de la carte droite et le label + filtre (~72px)
+  const cardHeight = leftCard.getBoundingClientRect().height;
+  const overhead   = 72; // label + input-group filter
+  const minH       = 200;
+  wrapper.style.maxHeight = Math.max(minH, cardHeight - overhead + 40) + "px";
+}
+
 // --- Boot ---
 document.addEventListener("DOMContentLoaded", async function () {
   // Dates par défaut = week-end courant
@@ -440,7 +517,13 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   await loadTemplates();
   await loadCategoriesForSeason();
-  document.getElementById("saison")?.addEventListener("change", loadCategoriesForSeason);
+  setupCatFilter();
+  syncCatTableHeight();
+  window.addEventListener("resize", syncCatTableHeight);
+  document.getElementById("saison")?.addEventListener("change", async () => {
+    await loadCategoriesForSeason();
+    syncCatTableHeight();
+  });
 
   document.getElementById("filterForm").addEventListener("submit", submitForm);
 

@@ -64,7 +64,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
+app.mount("/static",  StaticFiles(directory=BASE_DIR / "app" / "static"),  name="static")
+app.mount("/assets",  StaticFiles(directory=BASE_DIR / "app" / "assets"),  name="assets")
 
 
 @app.get("/admin")

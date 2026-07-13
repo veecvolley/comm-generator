@@ -1,22 +1,46 @@
 {% extends "admin/base.html" %}
 {% block title %}Template {{ tpl.name }}{% endblock %}
 
-{# ── Macro: table clé/valeur simple (string ou number) ─────────────── #}
-{% macro kv_table(sid, items, placeholder_val="valeur") %}
+{# ── Macro: table clé/valeur ────────────────────────────────────────── #}
+{# upload_dir : si renseigné, ajoute bouton upload + miniature PNG       #}
+{% macro kv_table(sid, items, placeholder_val="valeur", upload_dir="") %}
 <div class="table-responsive">
   <table class="table table-sm table-bordered mb-0 align-middle">
     <thead class="table-light">
       <tr>
-        <th style="width:38%">Clé</th>
+        <th style="width:34%">Clé</th>
         <th>{{ placeholder_val }}</th>
         <th style="width:44px"></th>
       </tr>
     </thead>
-    <tbody id="rows-{{ sid }}">
+    <tbody id="rows-{{ sid }}" data-upload-dir="{{ upload_dir }}">
       {% for k, v in items.items() %}
       <tr class="kv-row">
         <td><input class="kv-key form-control form-control-sm font-monospace" value="{{ k }}"></td>
-        <td><input class="kv-val form-control form-control-sm" value="{{ v }}"></td>
+        <td>
+          {% if upload_dir %}
+          <div class="d-flex align-items-center gap-2">
+            <img src="/assets/{{ upload_dir }}/{{ v }}"
+                 class="asset-thumb"
+                 style="height:44px;width:44px;object-fit:cover;border-radius:6px;cursor:zoom-in;border:1px solid #dee2e6;flex-shrink:0;"
+                 onclick="openAssetPreview(this.src)"
+                 onerror="this.style.visibility='hidden'" onload="this.style.visibility='visible'">
+            <div class="input-group input-group-sm flex-grow-1">
+              <input class="kv-val form-control form-control-sm" value="{{ v }}" placeholder="fichier.png"
+                     oninput="updateThumb(this)">
+              <button type="button" class="btn btn-outline-secondary"
+                      onclick="triggerUpload(this)" title="Uploader un PNG">
+                <i class="bi bi-upload"></i>
+              </button>
+              <input type="file" accept=".png,image/png" class="d-none asset-upload-input"
+                     data-upload-dir="{{ upload_dir }}">
+            </div>
+          </div>
+          {% else %}
+          <input class="kv-val form-control form-control-sm" value="{{ v }}"
+                 placeholder="{{ placeholder_val }}">
+          {% endif %}
+        </td>
         <td class="text-center">
           <button type="button" onclick="delRow(this)"
                   class="btn btn-sm btn-outline-danger py-0 px-1">
@@ -39,13 +63,19 @@
 {% block content %}
 <div class="page-header d-flex align-items-center gap-2">
   <a href="/admin/templates" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  {% if is_new %}
+  <h4 class="mb-0"><i class="bi bi-plus-circle me-2 text-success"></i>Nouveau template</h4>
+  {% else %}
   <h4 class="mb-0"><i class="bi bi-image me-2 text-primary"></i>{{ tpl.display_name or tpl.name }}</h4>
   <code class="text-muted">{{ tpl.name }}</code>
   {% if success %}<span class="badge bg-success ms-2">Enregistré</span>{% endif %}
+  {% endif %}
 </div>
 
+{% if error %}<div class="alert alert-danger alert-dismissible mb-3"><button class="btn-close" data-bs-dismiss="alert"></button>{{ error }}</div>{% endif %}
+
 {# Hidden JSON fields — filled by JS on submit #}
-<form id="tpl-form" method="post" action="/admin/templates/{{ tpl.name }}">
+<form id="tpl-form" method="post" action="{% if is_new %}/admin/templates/new{% else %}/admin/templates/{{ tpl.name }}{% endif %}">
   <textarea name="backgrounds" id="json-backgrounds" class="d-none"></textarea>
   <textarea name="banners"     id="json-banners"     class="d-none"></textarea>
   <textarea name="fonts"       id="json-fonts"       class="d-none"></textarea>
@@ -60,6 +90,15 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white fw-semibold">Informations</div>
         <div class="card-body">
+          {% if is_new %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">ID <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control font-monospace"
+                   placeholder="ex: Insta02" required autofocus
+                   pattern="[\w\-]+" title="Lettres, chiffres et tirets uniquement">
+            <div class="form-text">Identifiant unique, non modifiable ici (lettres, chiffres, tirets).</div>
+          </div>
+          {% endif %}
           <div class="mb-3">
             <label class="form-label">Nom affiché</label>
             <input type="text" name="display_name" class="form-control"
@@ -94,12 +133,12 @@
         </div>
         <div class="card-body p-0">
           <div class="p-3 border-bottom">
-            <p class="small text-muted fw-semibold mb-2 text-uppercase tracking-wide">Backgrounds</p>
-            {{ kv_table("backgrounds", backgrounds, "Fichier image") }}
+            <p class="small text-muted fw-semibold mb-2 text-uppercase">Backgrounds</p>
+            {{ kv_table("backgrounds", backgrounds, "Fichier image", "backgrounds") }}
           </div>
           <div class="p-3">
             <p class="small text-muted fw-semibold mb-2 text-uppercase">Banners</p>
-            {{ kv_table("banners", banners, "Fichier image") }}
+            {{ kv_table("banners", banners, "Fichier image", "banners") }}
           </div>
         </div>
       </div>
@@ -128,13 +167,11 @@
         </div>
         <div class="card-body p-0">
 
-          {# Offsets Y : toutes valeurs simples #}
           <div class="p-3 border-bottom">
             <p class="small text-muted fw-semibold mb-2 text-uppercase">Offsets Y <span class="fw-normal text-muted">(positions verticales, px)</span></p>
             {{ kv_table("offsets_y", offsets_y, "Position Y (px)") }}
           </div>
 
-          {# Offsets X : valeurs simples ET objets {center, width, [offset]} #}
           <div class="p-3">
             <p class="small text-muted fw-semibold mb-2 text-uppercase">Offsets X <span class="fw-normal text-muted">(positions horizontales)</span></p>
             <div class="table-responsive">
@@ -149,9 +186,7 @@
                 <tbody id="rows-offsets_x">
                   {% for k, v in offsets_x.items() %}
                   <tr class="kv-row">
-                    <td>
-                      <input class="kv-key form-control form-control-sm font-monospace" value="{{ k }}">
-                    </td>
+                    <td><input class="kv-key form-control form-control-sm font-monospace" value="{{ k }}"></td>
                     <td>
                       {% if v is mapping %}
                       <div class="kv-obj">
@@ -207,12 +242,39 @@
 
   <div class="mt-3 d-flex gap-2">
     <button type="submit" class="btn btn-primary">
+      {% if is_new %}
+      <i class="bi bi-plus-circle me-1"></i>Créer le template
+      {% else %}
       <i class="bi bi-save me-1"></i>Enregistrer
+      {% endif %}
     </button>
     <a href="/admin/templates" class="btn btn-outline-secondary">Annuler</a>
   </div>
 
 </form>
+
+<!-- Lightbox aperçu image -->
+<div id="assetModal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);
+            justify-content:center;align-items:center;z-index:9999;cursor:zoom-out;"
+     onclick="closeAssetPreview()">
+  <img id="assetModalImg" src="" alt="Aperçu"
+       style="max-width:92%;max-height:92%;border-radius:10px;box-shadow:0 4px 32px #000a;
+              object-fit:contain;cursor:default;"
+       onclick="event.stopPropagation()">
+  <span style="position:absolute;top:18px;right:26px;font-size:32px;color:#fff;
+               cursor:pointer;line-height:1;text-shadow:0 2px 8px #000c;"
+        onclick="closeAssetPreview()">&times;</span>
+</div>
+
+<!-- Toast upload -->
+<div id="uploadToast" class="toast align-items-center position-fixed bottom-0 end-0 m-3"
+     role="alert" style="z-index:10000">
+  <div class="d-flex">
+    <div class="toast-body" id="uploadToastMsg"></div>
+    <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"></button>
+  </div>
+</div>
 
 <script>
 /* ── Serialisation ─────────────────────────────────────────────────── */
@@ -250,14 +312,68 @@ document.getElementById('tpl-form').addEventListener('submit', function() {
   });
 });
 
+/* ── Miniature : mise à jour quand on tape dans le champ filename ───── */
+function updateThumb(input) {
+  const wrapper   = input.closest('.d-flex');
+  const img       = wrapper?.querySelector('.asset-thumb');
+  const tbody     = input.closest('tbody');
+  const uploadDir = tbody?.dataset.uploadDir;
+  if (!img || !uploadDir) return;
+  const filename = input.value.trim();
+  if (filename) {
+    img.style.visibility = 'hidden';
+    img.src = `/assets/${uploadDir}/${filename}`;
+  } else {
+    img.style.visibility = 'hidden';
+  }
+}
+
+/* ── Lightbox ──────────────────────────────────────────────────────── */
+function openAssetPreview(src) {
+  const modal = document.getElementById('assetModal');
+  document.getElementById('assetModalImg').src = src;
+  modal.style.display = 'flex';
+}
+function closeAssetPreview() {
+  document.getElementById('assetModal').style.display = 'none';
+  document.getElementById('assetModalImg').src = '';
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeAssetPreview();
+});
+
 /* ── Sections simples : add/del row ────────────────────────────────── */
 function addRow(sid) {
   const tbody = document.getElementById('rows-' + sid);
+  const uploadDir = tbody.dataset.uploadDir || '';
   const tr = document.createElement('tr');
   tr.className = 'kv-row';
+
+  const valCell = uploadDir
+    ? `<td>
+        <div class="d-flex align-items-center gap-2">
+          <img class="asset-thumb"
+               style="height:44px;width:44px;object-fit:cover;border-radius:6px;cursor:zoom-in;
+                      border:1px solid #dee2e6;flex-shrink:0;visibility:hidden;"
+               onclick="openAssetPreview(this.src)"
+               onerror="this.style.visibility='hidden'" onload="this.style.visibility='visible'">
+          <div class="input-group input-group-sm flex-grow-1">
+            <input class="kv-val form-control form-control-sm" placeholder="fichier.png"
+                   oninput="updateThumb(this)">
+            <button type="button" class="btn btn-outline-secondary"
+                    onclick="triggerUpload(this)" title="Uploader un PNG">
+              <i class="bi bi-upload"></i>
+            </button>
+            <input type="file" accept=".png,image/png" class="d-none asset-upload-input"
+                   data-upload-dir="${uploadDir}">
+          </div>
+        </div>
+      </td>`
+    : `<td><input class="kv-val form-control form-control-sm" placeholder="valeur"></td>`;
+
   tr.innerHTML =
     '<td><input class="kv-key form-control form-control-sm font-monospace" placeholder="clé"></td>' +
-    '<td><input class="kv-val form-control form-control-sm" placeholder="valeur"></td>' +
+    valCell +
     '<td class="text-center"><button type="button" onclick="delRow(this)" class="btn btn-sm btn-outline-danger py-0 px-1"><i class="bi bi-trash"></i></button></td>';
   tbody.appendChild(tr);
   tr.querySelector('.kv-key').focus();
@@ -267,7 +383,52 @@ function delRow(btn) {
   btn.closest('tr').remove();
 }
 
-/* ── Offsets X : lignes spécifiques ───────────────────────────────── */
+/* ── Upload PNG ────────────────────────────────────────────────────── */
+function triggerUpload(btn) {
+  const fileInput = btn.nextElementSibling;
+  fileInput.onchange = async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const uploadDir = fileInput.dataset.uploadDir;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('directory', uploadDir);
+      const resp = await fetch('/admin/assets/upload', { method: 'POST', body: fd });
+      if (!resp.ok) {
+        const err = await resp.json();
+        showUploadToast('Erreur : ' + (err.detail || resp.status), 'danger');
+        return;
+      }
+      const data = await resp.json();
+      const valInput = btn.previousElementSibling;
+      valInput.value = data.filename;
+      updateThumb(valInput);
+      showUploadToast('Uploadé : ' + data.filename, 'success');
+    } catch (e) {
+      showUploadToast('Erreur upload : ' + e, 'danger');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-upload"></i>';
+      fileInput.value = '';
+    }
+  };
+  fileInput.click();
+}
+
+function showUploadToast(msg, type) {
+  const toast = document.getElementById('uploadToast');
+  const body  = document.getElementById('uploadToastMsg');
+  toast.className = `toast align-items-center position-fixed bottom-0 end-0 m-3 text-bg-${type}`;
+  body.textContent = msg;
+  bootstrap.Toast.getOrCreateInstance(toast, { delay: 3500 }).show();
+}
+
+/* ── Offsets X ─────────────────────────────────────────────────────── */
 function addXSimple() {
   const tbody = document.getElementById('rows-offsets_x');
   const tr = document.createElement('tr');
@@ -302,7 +463,6 @@ function addXObj() {
   tr.querySelector('.kv-key').focus();
 }
 
-/* ── Sous-champs (offsets_x objets) ────────────────────────────────── */
 function addSubRow(btn) {
   const container = btn.closest('.kv-obj');
   const div = document.createElement('div');

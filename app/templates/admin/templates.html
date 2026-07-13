@@ -2,8 +2,11 @@
 {% block title %}Templates{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header d-flex align-items-center justify-content-between">
   <h4 class="mb-0"><i class="bi bi-image me-2 text-primary"></i>Templates d'images</h4>
+  <a href="/admin/templates/new" class="btn btn-success btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>Créer un template
+  </a>
 </div>
 
 {% if success %}<div class="alert alert-success alert-dismissible"><button class="btn-close" data-bs-dismiss="alert"></button>Modifications enregistrées.</div>{% endif %}

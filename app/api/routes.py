@@ -20,6 +20,19 @@ VERSION = open(pathlib.Path(__file__).parents[2] / "VERSION.md", encoding="utf-8
 
 router = APIRouter()
 
+_PARIS_TZ = None
+def _fmt_sync(dt) -> str | None:
+    """Convertit un datetime UTC naïf en heure de Paris, formate en dd/mm/yyyy HH:MM."""
+    if dt is None:
+        return None
+    global _PARIS_TZ
+    if _PARIS_TZ is None:
+        from zoneinfo import ZoneInfo
+        _PARIS_TZ = ZoneInfo("Europe/Paris")
+    from datetime import timezone
+    dt_utc = dt.replace(tzinfo=timezone.utc)
+    return dt_utc.astimezone(_PARIS_TZ).strftime("%d/%m/%Y %H:%M")
+
 
 @router.get("/health")
 def health_check():
@@ -33,12 +46,55 @@ def health_check():
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
     from app.db.crud.config import get_active_saisons, get_setting
+    from app.db.crud.ffvb import get_last_sync
     saisons = sorted(get_active_saisons(db), reverse=True)
     club_name = get_setting(db, "club_name")
+    last_sync = get_last_sync(db)
+    last_sync_str = _fmt_sync(last_sync)
     return templates.TemplateResponse("index.html", {
         "request": request, "version": VERSION,
         "saisons": saisons, "club_name": club_name,
+        "last_sync": last_sync_str,
     })
+
+
+@router.post("/sync-ffvb")
+async def sync_ffvb(
+    saison: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Déclenche la synchronisation FFVB depuis l'app principale."""
+    from app.db.crud.config import get_active_saisons
+    from app.db.database import get_db_session
+    from app.services.sync import sync_matches
+
+    saisons_list = [saison] if saison else get_active_saisons(db)
+
+    total_inserted = total_updated = 0
+    errors = []
+
+    for s in saisons_list:
+        try:
+            sync_db = get_db_session()
+            try:
+                result = await asyncio.to_thread(sync_matches, sync_db, s, "")
+                total_inserted += result.inserted
+                total_updated  += result.updated
+            finally:
+                sync_db.close()
+        except Exception as e:
+            errors.append(f"{s}: {e}")
+
+    from app.db.crud.ffvb import get_last_sync
+    last_sync = get_last_sync(db)
+    last_sync_str = _fmt_sync(last_sync)
+
+    return {
+        "inserted": total_inserted,
+        "updated":  total_updated,
+        "errors":   errors,
+        "last_sync": last_sync_str,
+    }
 
 
 @router.get("/categories")

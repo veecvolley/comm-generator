@@ -15,10 +15,27 @@
   <nav class="navbar bg-white shadow-sm px-3 px-md-4 py-2 mb-4 d-flex justify-content-between">
     <div class="d-flex align-items-center gap-2">
       <img src="/static/img/logo.png" height="40" alt="Logo">
-      <span class="fw-bold fs-5 text-primary">{{ club_name or "Comm' Generator" }}</span>
+      <span class="fw-bold fs-5 text-primary">Comm' Generator</span>
     </div>
     <div class="d-flex align-items-center gap-2">
       <span id="statusMsg" class="small text-muted d-none"></span>
+
+      <!-- Sync FFVB -->
+      <div class="d-flex align-items-center gap-1">
+        <button id="syncFfvbBtn" class="btn btn-sm btn-outline-success" title="Synchroniser les données FFVB">
+          <i class="bi bi-cloud-download"></i>
+        </button>
+        <span id="lastSyncLabel" class="small text-muted" style="white-space:nowrap;">
+          {% if last_sync %}
+            <i class="bi bi-clock me-1"></i>{{ last_sync }}
+          {% else %}
+            <span class="fst-italic">jamais synchronisé</span>
+          {% endif %}
+        </span>
+      </div>
+
+      <div class="vr mx-1"></div>
+
       <button id="refreshConfigBtn" class="btn btn-sm btn-outline-secondary" title="Rafraîchir les catégories">
         <i class="bi bi-arrow-clockwise"></i>
       </button>
@@ -32,18 +49,32 @@
   </nav>
 
   <!-- Main layout -->
-  <div class="container-fluid px-3 px-md-4">
-    <div class="row g-4">
+  <div class="container-fluid px-3 px-md-4 pb-5">
+    <form id="filterForm">
 
-      <!-- Form column -->
-      <div class="col-lg-5">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body p-4">
-            <form id="filterForm">
+      <!-- Bouton Générer (centré, au-dessus des colonnes) -->
+      <div class="row mb-3">
+        <div class="col-md-6 col-lg-4 mx-auto">
+          <button type="submit" class="btn btn-primary w-100 btn-lg">
+            <span id="loading" class="d-none">
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Génération...
+            </span>
+            <span id="generateLabel"><i class="bi bi-image-fill me-1"></i>Générer l'image</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 1 : paramètres (gauche) + catégories (droite) -->
+      <div class="row g-4 mb-4 align-items-start">
+
+        <!-- Colonne gauche : paramètres -->
+        <div class="col-lg-3">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 d-flex flex-column gap-3">
 
               <!-- Saison -->
-              <div class="mb-3">
-                <label for="saison" class="form-label fw-semibold">
+              <div>
+                <label for="saison" class="form-label fw-semibold mb-1">
                   <i class="bi bi-calendar3 me-1"></i>Saison
                 </label>
                 <select id="saison" name="saison" class="form-select">
@@ -56,41 +87,46 @@
               </div>
 
               <!-- Mode -->
-              <div class="mb-3">
-                <label for="mode" class="form-label fw-semibold">
+              <div>
+                <label class="form-label fw-semibold mb-1 d-block">
                   <i class="bi bi-clipboard-list me-1"></i>Type
                 </label>
-                <select id="mode" name="mode" class="form-select">
-                  <option value="planning" selected>Planning</option>
-                  <option value="results">Résultats</option>
-                </select>
+                <div class="btn-group" role="group" aria-label="Type">
+                  <input type="radio" class="btn-check" name="mode" id="modePlanning" value="planning" checked autocomplete="off">
+                  <label class="btn btn-outline-secondary" for="modePlanning">
+                    <i class="bi bi-calendar2-week me-1"></i>Planning
+                  </label>
+                  <input type="radio" class="btn-check" name="mode" id="modeResults" value="results" autocomplete="off">
+                  <label class="btn btn-outline-secondary" for="modeResults">
+                    <i class="bi bi-trophy me-1"></i>Résultats
+                  </label>
+                </div>
               </div>
 
               <!-- Titre -->
-              <div class="mb-3">
-                <label for="title" class="form-label fw-semibold">
+              <div>
+                <label for="title" class="form-label fw-semibold mb-1">
                   <i class="bi bi-type me-1"></i>Titre
                 </label>
                 <input type="text" id="title" name="title" class="form-control" placeholder="Ex: Week-end de Matchs !!">
               </div>
 
               <!-- Format -->
-              <div class="mb-3">
-                <label class="form-label fw-semibold d-block">
+              <div>
+                <label class="form-label fw-semibold mb-1 d-block">
                   <i class="bi bi-image me-1"></i>Format
                 </label>
                 <div class="btn-group" role="group" aria-label="Format">
                   <input type="radio" class="btn-check" name="format" id="formatPub" value="pub" checked autocomplete="off">
                   <label class="btn btn-outline-secondary" for="formatPub">Publication</label>
-
                   <input type="radio" class="btn-check" name="format" id="formatStory" value="story" autocomplete="off">
                   <label class="btn btn-outline-secondary" for="formatStory">Story</label>
                 </div>
               </div>
 
               <!-- Template -->
-              <div class="mb-3">
-                <label for="template" class="form-label fw-semibold">
+              <div>
+                <label for="template" class="form-label fw-semibold mb-1">
                   <i class="bi bi-palette me-1"></i>Template
                 </label>
                 <select id="template" name="template" class="form-select">
@@ -98,72 +134,100 @@
                 </select>
               </div>
 
-              <!-- Catégories -->
-              <div class="mb-3">
-                <label for="categories" class="form-label fw-semibold">
-                  <i class="bi bi-list-ul me-1"></i>Catégories
-                </label>
-                <select id="categories" name="categories" multiple class="form-select" size="7"></select>
-              </div>
-
               <!-- Dates -->
-              <div class="row g-2 mb-4">
+              <div class="row g-2">
                 <div class="col-6">
-                  <label for="date_start" class="form-label fw-semibold">
+                  <label for="date_start" class="form-label fw-semibold mb-1">
                     <i class="bi bi-calendar-day me-1"></i>Date début
                   </label>
                   <input type="date" id="date_start" name="date_start" class="form-control">
                 </div>
                 <div class="col-6">
-                  <label for="date_end" class="form-label fw-semibold">
+                  <label for="date_end" class="form-label fw-semibold mb-1">
                     <i class="bi bi-calendar-week me-1"></i>Date fin
                   </label>
                   <input type="date" id="date_end" name="date_end" class="form-control">
                 </div>
               </div>
 
-              <!-- Submit -->
-              <button type="submit" class="btn btn-primary w-100">
-                <span id="loading" class="d-none">
-                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Génération...
-                </span>
-                <span id="generateLabel"><i class="bi bi-image-fill me-1"></i>Générer l'image</span>
-              </button>
-
-            </form>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Image column -->
-      <div class="col-lg-7">
-        <div class="card border-0 shadow-sm h-100">
-          <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+        <!-- Colonne droite : catégories -->
+        <div class="col-lg-9">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
 
-            <!-- Empty state -->
-            <div id="emptyState" class="text-center text-muted py-5">
-              <i class="bi bi-image" style="font-size:4rem;opacity:0.25;"></i>
-              <p class="mt-3 mb-0">L'image générée apparaîtra ici</p>
+              <label class="form-label fw-semibold mb-2">
+                <i class="bi bi-list-ul me-1"></i>Catégories
+              </label>
+
+              <!-- Filtre + tout sélectionner -->
+              <div class="input-group input-group-sm mb-2">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="catFilter" class="form-control" placeholder="Filtrer par type, niveau, titre…">
+                <button type="button" id="catSelectAll" class="btn btn-outline-secondary" title="Tout sélectionner / désélectionner">
+                  <i class="bi bi-check2-all"></i>
+                </button>
+              </div>
+
+              <!-- Tableau catégories -->
+              <div id="catTableWrapper">
+                <table class="table table-sm table-hover mb-0" id="catTable">
+                  <thead class="table-light" style="position:sticky;top:0;z-index:1;">
+                    <tr>
+                      <th style="width:36px;"></th>
+                      <th>Label</th>
+                      <th>Type</th>
+                      <th>Genre</th>
+                      <th>Niveau</th>
+                      <th>Titre</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catTableBody">
+                    <tr><td colspan="6" class="text-muted text-center py-3">Chargement…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
             </div>
-
-            <!-- Result image -->
-            <img id="resultImg" class="img-fluid rounded d-none" style="cursor:zoom-in;" alt="Image générée">
-
-            <!-- Action buttons (hidden until image is ready) -->
-            <div id="imageActions" class="d-none mt-3 d-flex gap-2">
-              <button id="downloadBtn" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-download me-1"></i>Télécharger
-              </button>
-              <button id="shareBtn" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-share me-1"></i>Partager
-              </button>
-            </div>
-
           </div>
         </div>
-      </div>
 
-    </div>
+      </div><!-- /row 1 -->
+
+      <!-- Row 2 : image générée (pleine largeur) -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center" style="min-height:260px;">
+
+              <!-- Empty state -->
+              <div id="emptyState" class="text-center text-muted py-4">
+                <i class="bi bi-image" style="font-size:4rem;opacity:0.25;"></i>
+                <p class="mt-3 mb-0">L'image générée apparaîtra ici</p>
+              </div>
+
+              <!-- Result image -->
+              <img id="resultImg" class="img-fluid rounded d-none" style="cursor:zoom-in;max-height:600px;" alt="Image générée">
+
+              <!-- Action buttons -->
+              <div id="imageActions" class="d-none mt-3 d-flex gap-2">
+                <button id="downloadBtn" class="btn btn-outline-secondary btn-sm">
+                  <i class="bi bi-download me-1"></i>Télécharger
+                </button>
+                <button id="shareBtn" class="btn btn-outline-secondary btn-sm">
+                  <i class="bi bi-share me-1"></i>Partager
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div><!-- /row 2 -->
+
+    </form>
   </div>
 
   <!-- Version -->

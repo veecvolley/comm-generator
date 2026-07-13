@@ -19,6 +19,15 @@
 {% if success %}<div class="alert alert-success alert-dismissible"><button class="btn-close" data-bs-dismiss="alert"></button>Modifications enregistrées.</div>{% endif %}
 {% if error %}<div class="alert alert-danger alert-dismissible"><button class="btn-close" data-bs-dismiss="alert"></button>{{ error }}</div>{% endif %}
 
+<!-- Filtre texte libre -->
+<div class="input-group mb-4" style="max-width:420px">
+  <span class="input-group-text"><i class="bi bi-search"></i></span>
+  <input type="text" id="catSeasonFilter" class="form-control" placeholder="Filtrer par code, label, type, genre, niveau, titre…">
+  <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('catSeasonFilter').value='';filterCats('')" title="Effacer">
+    <i class="bi bi-x-lg"></i>
+  </button>
+</div>
+
 {% for saison in saisons %}
 {# Hidden edit forms (one per category — outside the table to keep valid HTML) #}
 {% for code, info in cats_by_season[saison].items() %}
@@ -42,7 +51,7 @@
         <tbody>
           {% for code, info in cats_by_season[saison].items() %}
           {% set rid = saison ~ '__' ~ code %}
-          <tr id="row-{{ rid }}">
+          <tr id="row-{{ rid }}" data-search="{{ [code, info.label, info.type, info.genre, info.niveau, info.titre] | join(' ') | lower }}">
             <td><code>{{ code }}</code></td>
             <td>
               <span class="v-cell"><strong>{{ info.label }}</strong></span>
@@ -214,5 +223,19 @@ function cancelEdit(id) {
   row.querySelectorAll('.e-cell, .e-btn').forEach(el => el.classList.add('d-none'));
   row.querySelectorAll('.v-cell, .v-btn').forEach(el => el.classList.remove('d-none'));
 }
+
+function filterCats(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('tr[data-search]').forEach(tr => {
+    tr.style.display = tr.dataset.search.includes(q) ? '' : 'none';
+  });
+  // Affiche/masque les cards de saison si toutes leurs lignes sont cachées
+  document.querySelectorAll('.card.border-0.shadow-sm.mb-4').forEach(card => {
+    const visible = card.querySelectorAll('tr[data-search]:not([style*="none"])').length;
+    card.style.display = visible ? '' : 'none';
+  });
+}
+
+document.getElementById('catSeasonFilter').addEventListener('input', e => filterCats(e.target.value));
 </script>
 {% endblock %}

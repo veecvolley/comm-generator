@@ -2,6 +2,7 @@ import csv
 import io
 import ssl
 import re
+import pdfplumber
 from typing import Optional, Dict, Any
 from app.core.config import settings
 from app.core.logger import get_logger

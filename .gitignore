@@ -177,3 +177,22 @@ cython_debug/
 *.csv
 *.tar.gz
 build-transfert.sh
+
+# --- Projet spécifique ---
+
+# Base de données SQLite (runtime)
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# PDFs gymnases (téléchargés à la demande)
+*.pdf
+
+# Cache HTTP requests-cache
+*_cache/
+http_cache*
+
+# Coverage HTML
+htmlcov/

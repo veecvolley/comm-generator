@@ -1,6 +1,6 @@
 """Admin routes — /admin/"""
 import json
-from fastapi import APIRouter, Request, Depends, Form, HTTPException
+from fastapi import APIRouter, Request, Depends, Form, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -402,6 +402,62 @@ def templates_page(request: Request, db: Session = Depends(get_db)):
     ))
 
 
+@admin_router.get("/templates/new", response_class=HTMLResponse)
+def template_new_page(request: Request, db: Session = Depends(get_db)):
+    from types import SimpleNamespace
+    tpl = SimpleNamespace(
+        name="", display_name="", description="", inherit_from=None,
+        get_backgrounds=lambda: {}, get_banners=lambda: {},
+        get_fonts=lambda: {}, get_sizes=lambda: {},
+        get_offsets_y=lambda: {}, get_offsets_x=lambda: {},
+    )
+    all_templates = [t.name for t in templates_crud.get_all_templates(db)]
+    return jinja.TemplateResponse("admin/template_edit.html", _ctx(
+        request, tpl=tpl, is_new=True,
+        all_templates=all_templates,
+        backgrounds={}, banners={}, fonts={}, sizes={}, offsets_y={}, offsets_x={},
+        error=request.query_params.get("error"),
+    ))
+
+
+@admin_router.post("/templates/new")
+async def template_create(request: Request, db: Session = Depends(get_db)):
+    import re
+    form = await request.form()
+
+    name = form.get("name", "").strip()
+    if not name:
+        return RedirectResponse("/admin/templates/new?error=L'ID+est+obligatoire", status_code=303)
+    if not re.match(r'^[\w\-]+$', name):
+        return RedirectResponse("/admin/templates/new?error=ID+invalide+(lettres,+chiffres,+tirets+uniquement)", status_code=303)
+    if templates_crud.get_template(db, name):
+        return RedirectResponse(f"/admin/templates/new?error=L'ID+'{name}'+est+déjà+utilisé", status_code=303)
+
+    def _parse_json(field: str) -> dict:
+        raw = form.get(field, "")
+        try:
+            return json.loads(raw) if raw.strip() else {}
+        except Exception:
+            return {}
+
+    templates_crud.upsert_template(db, name, {
+        "display_name": form.get("display_name", name),
+        "description":  form.get("description", ""),
+        "inherit_from": form.get("inherit_from") or None,
+        "backgrounds":  _parse_json("backgrounds"),
+        "banners":      _parse_json("banners"),
+        "fonts":        _parse_json("fonts"),
+        "offsets_y":    _parse_json("offsets_y"),
+        "offsets_x":    _parse_json("offsets_x"),
+        "sizes":        _parse_json("sizes"),
+    })
+
+    from app.core.image_templates import template_manager
+    template_manager.reload()
+
+    return RedirectResponse(f"/admin/templates/{name}?success=1", status_code=303)
+
+
 @admin_router.get("/templates/{name}", response_class=HTMLResponse)
 def template_edit_page(name: str, request: Request, db: Session = Depends(get_db)):
     tpl = templates_crud.get_template(db, name)
@@ -646,6 +702,37 @@ async def data_sync(
         f"/admin/data?success=Sync terminée — {total_inserted} insérés, {total_updated} mis à jour",
         status_code=303
     )
+
+
+@admin_router.post("/assets/upload")
+async def upload_asset(
+    file: UploadFile = File(...),
+    directory: str = Form(...),
+):
+    """Upload a PNG asset (background or banner) and save it to app/assets/{directory}/."""
+    import re
+    import shutil
+    from pathlib import Path
+
+    allowed = {"backgrounds", "banners", "clubs"}
+    if directory not in allowed:
+        raise HTTPException(400, f"Répertoire non autorisé : {directory}")
+
+    if not file.filename.lower().endswith(".png"):
+        raise HTTPException(400, "Seuls les fichiers PNG sont acceptés")
+
+    safe_name = re.sub(r"[^\w\-.]", "_", file.filename)
+    if not safe_name.lower().endswith(".png"):
+        safe_name += ".png"
+
+    assets_dir = Path(__file__).parents[1] / "assets" / directory
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    dest = assets_dir / safe_name
+
+    with dest.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    return {"filename": safe_name}
 
 
 @admin_router.post("/data/sync-addresses")
