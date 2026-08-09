@@ -17,17 +17,28 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 from requests.adapters import HTTPAdapter
 
 class LegacySSLAdapter(HTTPAdapter):
-    """Adaptateur SSL pour les serveurs utilisant des configurations SSL anciennes (TLS 1.2 forcé)."""
+    """Adaptateur SSL pour les serveurs FFVB utilisant des configurations SSL obsolètes."""
+
+    @staticmethod
+    def _build_ctx() -> ssl.SSLContext:
+        # PROTOCOL_TLS_CLIENT force check_hostname=True dès la construction ;
+        # il faut désactiver check_hostname AVANT verify_mode sous OpenSSL 3.x.
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False          # en premier
+        ctx.verify_mode = ssl.CERT_NONE     # en second
+        # Autoriser tous les ciphers (serveur FFVB utilise des suites anciennes)
+        ctx.set_ciphers("ALL:@SECLEVEL=0")
+        # Compatibilité serveurs avec renégociation legacy (OpenSSL 3.x)
+        ctx.options |= getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0)
+        return ctx
 
     def init_poolmanager(self, *args, **kwargs):
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        ctx.options |= ssl.OP_LEGACY_SERVER_CONNECT
-        ctx.maximum_version = ssl.TLSVersion.TLSv1_2
-        ctx.set_ciphers("RSA:@SECLEVEL=0")
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        kwargs["ssl_context"] = ctx
+        kwargs["ssl_context"] = self._build_ctx()
         super().init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, proxy, **proxy_kwargs):
+        proxy_kwargs["ssl_context"] = self._build_ctx()
+        return super().proxy_manager_for(proxy, **proxy_kwargs)
 
 
 def _get_session():

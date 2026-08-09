@@ -189,6 +189,70 @@ def seasons_page(request: Request, db: Session = Depends(get_db)):
     ))
 
 
+@admin_router.post("/seasons/new")
+async def season_new(
+    request: Request,
+    db: Session = Depends(get_db),
+    saison: str = Form(...),
+    sync: bool = Form(False),
+):
+    """Ajoute une nouvelle saison (active_saisons) et optionnellement sync les catégories FFVB."""
+    import re, asyncio
+    from app.db.crud.config import add_saison, get_setting
+    from app.db.crud.seasons import upsert_category
+    from app.services.seasons import (
+        fetch_lines, split_code_title, detect_type, detect_gender,
+        detect_category, detect_level, build_label, normalize_season,
+    )
+
+    saison = saison.strip().replace("-", "/")
+    if not re.match(r"^\d{4}/\d{4}$", saison):
+        return RedirectResponse("/admin/seasons?error=Format+de+saison+invalide+(YYYY/YYYY)", status_code=303)
+
+    saison_key = normalize_season(saison)   # → "2026-2027"
+    add_saison(db, saison_key)
+    from app.core.config import settings as app_settings
+    app_settings.refresh()
+
+    if not sync:
+        return RedirectResponse("/admin/seasons?success=Saison+ajoutée", status_code=303)
+
+    # Sync catégories FFVB pour cette saison uniquement
+    club_id = get_setting(db, "club_id")
+
+    def _do_sync():
+        codes = {}
+        lines = fetch_lines(club_id, saison)
+        for line in lines:
+            code, title = split_code_title(line)
+            u = line.upper()
+            codes[code] = {
+                "titre": title,
+                "type": detect_type(u),
+                "genre": detect_gender(u),
+                "category": detect_category(u),
+                "niveau": detect_level(u),
+                "label": build_label(detect_type(u), detect_gender(u), detect_category(u)),
+            }
+        return codes
+
+    try:
+        codes = await asyncio.to_thread(_do_sync)
+        for code, info in codes.items():
+            upsert_category(db, saison_key, code, info)
+        n = len(codes)
+        return RedirectResponse(
+            f"/admin/seasons?success=Saison+{saison}+ajoutée+({n}+catégories+synchronisées)",
+            status_code=303,
+        )
+    except Exception as e:
+        logger.error("Season new sync failed: %s", e)
+        return RedirectResponse(
+            f"/admin/seasons?success=Saison+ajoutée&error=Sync+échouée+:+{e}",
+            status_code=303,
+        )
+
+
 @admin_router.post("/seasons/sync")
 async def seasons_sync(db: Session = Depends(get_db)):
     """Sync season categories from FFVB website."""

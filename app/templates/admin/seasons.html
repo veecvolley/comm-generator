@@ -5,13 +5,16 @@
 <div class="page-header d-flex align-items-center justify-content-between">
   <h4 class="mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>Saisons & Catégories</h4>
   <div class="d-flex gap-2">
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newSaisonModal">
+      <i class="bi bi-calendar-plus me-1"></i>Nouvelle saison
+    </button>
     <form method="post" action="/admin/seasons/sync">
       <button class="btn btn-success btn-sm">
-        <i class="bi bi-arrow-repeat me-1"></i>Sync depuis FFVB
+        <i class="bi bi-arrow-repeat me-1"></i>Sync toutes les saisons
       </button>
     </form>
-    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCatModal">
-      <i class="bi bi-plus me-1"></i>Ajouter
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addCatModal">
+      <i class="bi bi-plus me-1"></i>Ajouter catégorie
     </button>
   </div>
 </div>
@@ -148,6 +151,45 @@
 {% else %}
 <div class="alert alert-info">Aucune saison en base. Configurez des saisons actives dans <a href="/admin/config">Configuration</a> puis cliquez sur "Sync depuis FFVB".</div>
 {% endfor %}
+
+<!-- Modal nouvelle saison -->
+<div class="modal fade" id="newSaisonModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Nouvelle saison</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/admin/seasons/new">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Saison <span class="text-danger">*</span></label>
+            <input type="text" name="saison" class="form-control font-monospace"
+                   placeholder="2026/2027" pattern="\d{4}[/-]\d{4}"
+                   title="Format YYYY/YYYY" required autofocus>
+            <div class="form-text">Format : <code>YYYY/YYYY</code></div>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="sync" value="true"
+                   id="syncCheck" checked>
+            <label class="form-check-label" for="syncCheck">
+              Synchroniser les catégories depuis la FFVB
+            </label>
+          </div>
+          <div class="form-text text-muted mt-1">
+            <i class="bi bi-info-circle me-1"></i>Nécessite l'identifiant FFVB du club configuré.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>Créer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- Modal ajout catégorie -->
 <div class="modal fade" id="addCatModal" tabindex="-1">

@@ -331,9 +331,13 @@ def generate_filtered_image(
                                         template_config.offsets_x['date']['center']*m,
                                         template_config.offsets_x['date']['width']*m,
                                         v_date, fonts["bold_15"])
-            result = get_gymnase_address(match, entity, db=db)
+            try:
+                result = get_gymnase_address(match, entity, db=db)
+            except Exception as e:
+                logger.warning("Impossible de récupérer l'adresse du gymnase (%s): %s", match, e)
+                result = None
             place_nom = result["nom"] if result else ""
-            place_adr = result["rue"] if result else "Adresse non trouvée"
+            place_adr = result["rue"] if result else "Adresse non disponible"
             place_ville = result["ville"] if result else ""
 
             draw_centered_text_overlay(background, place_nom,
